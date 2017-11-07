@@ -1,0 +1,8 @@
+{
+  "name": "<%= name %>",
+  "version": "<%= version %>.0.0",
+  "scripts": {
+    "install": "cd programs/server && npm install --unsafe-perm",
+    "start": "node main.js"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "mup-aws-beanstalk",
+  "version": "0.1.0",
+  "description": "Deploy apps to AWS Elastic Beanstalk using Meteor Up",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "babel src --out-dir lib --sourceRoot=./ --copy-files --sourcemaps",
+    "build:watch": "npm run build -s -- -w",
+    "lint": "eslint .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "zodern",
+  "license": "MIT",
+  "keywords": [
+    "meteor-up"
+  ],
+  "devDependencies": {
+    "@babel/core": "^7.0.0-beta.31",
+    "@babel/preset-env": "^7.0.0-beta.31",
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^8.0.1",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.10.0",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-jsx-a11y": "^6.0.2",
+    "eslint-plugin-react": "^7.4.0"
+  },
+  "dependencies": {
+    "archiver": "^2.1.0",
+    "aws-sdk": "^2.145.0",
+    "babel-polyfill": "^6.26.0",
+    "ejs": "^2.5.7",
+    "eslint-config-airbnb": "^16.1.0",
+    "joi": "^10.6.0",
+    "random-seed": "^0.3.0",
+    "tar": "^4.0.2",
+    "uuid": "^3.1.0"
+  }
+}
