@@ -2,17 +2,25 @@ import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
 
-export function injectFiles(api, name, version, bundlePath) {
-  const sourcePath = api.resolvePath(__dirname, './assets/package.json');
-  const destPath = api.resolvePath(bundlePath, 'bundle/package.json');
-  let contents = fs.readFileSync(sourcePath).toString();
+function copy(source, destination, vars = {}) {
+  let contents = fs.readFileSync(source).toString();
 
-  contents = ejs.render(contents, {
+  contents = ejs.render(contents, vars);
+
+  fs.writeFileSync(destination, contents);
+}
+
+export function injectFiles(api, name, version, bundlePath) {
+  let sourcePath = api.resolvePath(__dirname, './assets/package.json');
+  let destPath = api.resolvePath(bundlePath, 'bundle/package.json');
+  copy(sourcePath, destPath, {
     name,
     version
   });
 
-  fs.writeFileSync(destPath, contents);
+  sourcePath = api.resolvePath(__dirname, './assets/npmrc');
+  destPath = api.resolvePath(bundlePath, 'bundle/.npmrc');
+  copy(sourcePath, destPath);
 }
 
 export function archiveApp(buildLocation, api) {
@@ -21,7 +29,7 @@ export function archiveApp(buildLocation, api) {
   try {
     fs.unlinkSync(bundlePath);
   } catch (e) {
-    console.log(e);
+    // empty
   }
 
   return new Promise((resolve, reject) => {
