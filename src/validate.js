@@ -22,6 +22,12 @@ export default function (config, utils) {
     details,
     joi.validate(config.app, schema, utils.VALIDATE_OPTIONS)
   );
+  if (config.app && config.app.name && config.app.name.length < 4) {
+    details.push({
+      message: 'must have at least 4 characters',
+      path: 'name'
+    });
+  }
 
   return utils.addLocation(details, 'app');
 }
