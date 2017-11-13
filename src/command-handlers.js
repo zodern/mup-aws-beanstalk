@@ -18,6 +18,10 @@ import {
   createDesiredConfig
 } from './eb-config';
 
+import {
+  waitForEnvReady
+} from './env-ready';
+
 export async function setup(api) {
   console.log('=> Setting up');
 
@@ -114,7 +118,9 @@ export async function deploy(api) {
     EnvironmentName: environment,
     VersionLabel: nextVersion.toString()
   }).promise();
+
   console.dir(result);
+  await waitForEnvReady(config, true);
 }
 
 export function logs() {
@@ -138,19 +144,19 @@ export function push() {
 }
 
 export async function reconfig(api) {
-  console.log('=> Configuring Beanstalk Environment');
-
   const config = api.getConfig();
   const {
     beanstalk
   } = configure(config.app);
-
+  
   const {
     app,
     environment
   } = names(config);
+  
+  console.log('=> Configuring Beanstalk Environment');
 
-  // check if environment exists
+  // check if env exists
   const {
     Environments
   } = await beanstalk.describeEnvironments({
@@ -174,6 +180,8 @@ export async function reconfig(api) {
 
     console.log(' Created Environment');
   } else {
+    await waitForEnvReady(config, false);
+
     // TODO: only update diff, and remove extra items
 
     await beanstalk.updateEnvironment({
@@ -183,6 +191,7 @@ export async function reconfig(api) {
     console.log('  Updated Environment');
   }
 
+  await waitForEnvReady(config, true);
   // TODO: Wait until aws finished making changes
 }
 
