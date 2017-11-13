@@ -17,7 +17,13 @@ export default function upload(appConfig, bucket, key, bundlePath, showProgress)
     const uploader = s3.upload(params);
 
     uploader.on('httpUploadProgress', (progress) => {
-      console.log(`  Uploaded ${Math.floor(progress.loaded / progress.total * 100)}%`);
+      const percentage = Math.floor(progress.loaded / progress.total) * 100;
+
+      console.log(`  Uploaded ${percentage}%`);
+
+      if (percentage === 100) {
+        console.log('  Finishing upload. This could take a couple minutes');
+      }
     });
 
     uploader.send((err, result) => {

@@ -119,7 +119,6 @@ export async function deploy(api) {
     VersionLabel: nextVersion.toString()
   }).promise();
 
-  console.dir(result);
   await waitForEnvReady(config, true);
 }
 
@@ -148,12 +147,12 @@ export async function reconfig(api) {
   const {
     beanstalk
   } = configure(config.app);
-  
+
   const {
     app,
     environment
   } = names(config);
-  
+
   console.log('=> Configuring Beanstalk Environment');
 
   // check if env exists
