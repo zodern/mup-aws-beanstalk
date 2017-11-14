@@ -14,7 +14,7 @@ export const deploy = {
     });
   },
   handler: commandHandlers.deploy
-}
+};
 
 export const logs = {
   description: 'View app\'s logs',
@@ -62,18 +62,12 @@ export const events = {
   handler: commandHandlers.events
 };
 
-// Hidden commands
-
-export const push = {
-  description: false,
-  builder(yargs) {
-    return yargs.option('cached-build', {
-      description: 'Use build from previous deploy',
-      boolean: true
-    });
-  },
-  handler: commandHandlers.push
+export const clean = {
+  description: 'Remove old bundles and app versions',
+  handler: commandHandlers.clean
 };
+
+// Hidden commands
 
 export const reconfig = {
   description: false,

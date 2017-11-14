@@ -1,3 +1,6 @@
+import {
+  difference
+} from 'lodash';
 import configure from './aws';
 import {
   names
@@ -5,7 +8,7 @@ import {
 
 export async function ebVersions(api) {
   const config = api.getConfig();
-  let version = 0;
+  const versions = [0];
 
   const {
     beanstalk
@@ -20,20 +23,21 @@ export async function ebVersions(api) {
 
   if (appVersions.ApplicationVersions.length > 0) {
     // TODO: check for largest version number
-    appVersions.ApplicationVersions.forEach(({ VersionLabel }) => {
+    appVersions.ApplicationVersions.forEach(({
+      VersionLabel
+    }) => {
       const parsedVersion = parseInt(VersionLabel, 10);
-      if (parsedVersion > version) {
-        version = parsedVersion;
-      }
+
+      versions.push(parsedVersion);
     });
   }
 
-  return version;
+  return versions.sort((a, b) => b - a);
 }
 
 export async function s3Versions(api) {
   const config = api.getConfig();
-  let version = 0;
+  const versions = [0];
   const {
     s3
   } = configure(config.app);
@@ -52,18 +56,16 @@ export async function s3Versions(api) {
     uploadedBundles.Contents.forEach((bundle) => {
       const bundleVersion = parseInt(bundle.Key.split(bundlePrefix)[1], 10);
 
-      if (bundleVersion >= version) {
-        version = bundleVersion;
-      }
+      versions.push(bundleVersion);
     });
   }
 
-  return version;
+  return versions.sort((a, b) => b - a);
 }
 
 export async function largestVersion(api) {
-  let version = await s3Versions(api);
-  const appVersion = await ebVersions(api);
+  let [version] = await s3Versions(api);
+  const [appVersion] = await ebVersions(api);
 
   if (appVersion > version) {
     version = appVersion;
@@ -72,6 +74,18 @@ export async function largestVersion(api) {
   return version;
 }
 
-export function deployedVersion() {
+export async function oldVersions(api) {
+  const appVersions = await ebVersions(api);
+  const bundleVersions = await s3Versions(api);=
 
+  // find unused bundles
+  const oldBundleVersions = difference(bundleVersions, appVersions);
+
+  // keep the 3 newest versions
+  // TODO: make sure the currently deployed version isn't an older one
+  const oldAppVersions = appVersions.slice(3);
+  return {
+    bundles: oldBundleVersions,
+    versions: oldAppVersions
+  };
 }

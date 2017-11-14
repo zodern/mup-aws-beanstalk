@@ -12,7 +12,8 @@ import {
 } from './utils';
 import {
   largestVersion,
-  ebVersions
+  ebVersions,
+  oldVersions
 } from './versions';
 
 import {
@@ -115,12 +116,13 @@ export async function deploy(api) {
 
   console.log('=> Deploying new version');
 
-  const result = await beanstalk.updateEnvironment({
+  await beanstalk.updateEnvironment({
     EnvironmentName: environment,
     VersionLabel: nextVersion.toString()
   }).promise();
 
   await waitForEnvReady(config, true);
+  await api.runCommand('beanstalk.clean');
 }
 
 export async function logs(api) {
@@ -160,8 +162,28 @@ export function restart() {
 
 }
 
-export function push() {
+export async function clean(api) {
+  const config = api.getConfig();
+  const { app } = names(config);
+  const { beanstalk } = configure(config.app);
 
+  console.log('=> Finding old versions');
+  const { versions } = await oldVersions(api);
+
+  console.log('=> Removing old versions');
+
+  const promises = [];
+  for (let i = 0; i < versions.length; i++) {
+    promises.push(beanstalk.deleteApplicationVersion({
+      ApplicationName: app,
+      VersionLabel: versions[i].toString(),
+      DeleteSourceBundle: true
+    }).promise());
+  }
+
+  // TODO: remove bundles
+
+  await Promise.all(promises);
 }
 
 export async function reconfig(api) {
@@ -185,7 +207,7 @@ export async function reconfig(api) {
     EnvironmentNames: [environment]
   }).promise();
 
-  const desiredEbConfig = createDesiredConfig(api.getConfig());
+  const desiredEbConfig = createDesiredConfig(api.getConfig(), '', api);
 
   if (!Environments.find(env => env.Status !== 'Terminated')) {
     const version = await ebVersions(api);
@@ -204,7 +226,6 @@ export async function reconfig(api) {
     await waitForEnvReady(config, false);
 
     // TODO: only update diff, and remove extra items
-
     await beanstalk.updateEnvironment({
       EnvironmentName: environment,
       OptionSettings: desiredEbConfig.OptionSettings
