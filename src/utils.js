@@ -1,9 +1,14 @@
 import axios from 'axios';
+import chalk from 'chalk';
 import fs from 'fs';
 import random from 'random-seed';
 import os from 'os';
 import uuid from 'uuid';
 import configure from './aws';
+
+export function logStep(message) {
+  console.log(chalk.blue(message));
+}
 
 export function shouldRebuild(bundlePath, useCachedBuild) {
   if (fs.existsSync(bundlePath) && useCachedBuild) {
@@ -78,7 +83,7 @@ export async function getLogs(api) {
     beanstalk
   } = configure(config.app);
 
-  console.log('=> Requesting Logs');
+  logStep('=> Requesting Logs');
 
   await beanstalk.requestEnvironmentInfo({
     EnvironmentName: environment,
@@ -87,7 +92,7 @@ export async function getLogs(api) {
 
   const EnvironmentInfo = await retrieveEnvironmentInfo(api, 0);
 
-  console.log('=> Downloading Logs');
+  logStep('=> Downloading Logs');
 
   const logsForServer = EnvironmentInfo.reduce((result, info) => {
     result[info.Ec2InstanceId] = info.Message;

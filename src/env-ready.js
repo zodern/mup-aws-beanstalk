@@ -1,4 +1,5 @@
 import {
+  logStep,
   names
 } from './utils';
 import configure from './aws';
@@ -79,7 +80,7 @@ export async function waitForEnvReady(config, showProgress) {
 
       const status = result.Environments[0].Status;
       if (status !== 'Ready' && status !== lastStatus) {
-        console.log(`=> Waiting for Beanstalk Environment to finish ${status.toLowerCase()}`);
+        logStep(`=> Waiting for Beanstalk Environment to finish ${status.toLowerCase()}`);
         console.log('  It could take a few minutes');
         lastStatus = status;
       } else if (status === 'Ready') {

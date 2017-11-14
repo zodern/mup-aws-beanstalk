@@ -6,6 +6,7 @@ import {
 } from './prepare-bundle';
 import {
   getLogs,
+  logStep,
   names,
   tmpBuildPath,
   shouldRebuild
@@ -25,7 +26,7 @@ import {
 } from './env-ready';
 
 export async function setup(api) {
-  console.log('=> Setting up');
+  logStep('=> Setting up');
 
   const appConfig = api.getConfig().app;
   const {
@@ -95,12 +96,12 @@ export async function deploy(api) {
     await archiveApp(config.app.buildOptions.buildLocation, api);
   }
 
-  console.log('=> Uploading bundle');
+  logStep('=> Uploading bundle');
 
   const key = `${bundlePrefix}${nextVersion}`;
   await upload(config.app, bucket, `${bundlePrefix}${nextVersion}`, bundlePath);
 
-  console.log('=> Creating Version');
+  logStep('=> Creating Version');
 
   await beanstalk.createApplicationVersion({
     ApplicationName: app,
@@ -114,7 +115,7 @@ export async function deploy(api) {
 
   await api.runCommand('beanstalk.reconfig');
 
-  console.log('=> Deploying new version');
+  logStep('=> Deploying new version');
 
   await beanstalk.updateEnvironment({
     EnvironmentName: environment,
@@ -167,10 +168,10 @@ export async function clean(api) {
   const { app } = names(config);
   const { beanstalk } = configure(config.app);
 
-  console.log('=> Finding old versions');
+  logStep('=> Finding old versions');
   const { versions } = await oldVersions(api);
 
-  console.log('=> Removing old versions');
+  logStep('=> Removing old versions');
 
   const promises = [];
   for (let i = 0; i < versions.length; i++) {
@@ -197,7 +198,7 @@ export async function reconfig(api) {
     environment
   } = names(config);
 
-  console.log('=> Configuring Beanstalk Environment');
+  logStep('=> Configuring Beanstalk Environment');
 
   // check if env exists
   const {

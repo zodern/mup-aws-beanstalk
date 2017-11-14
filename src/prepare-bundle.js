@@ -1,7 +1,7 @@
 import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
-import { getNodeVersion } from './utils';
+import { getNodeVersion, logStep } from './utils';
 
 function copy(source, destination, vars = {}) {
   let contents = fs.readFileSync(source).toString();
@@ -52,7 +52,7 @@ export function archiveApp(buildLocation, api) {
 
   return new Promise((resolve, reject) => {
     // log('starting archive');
-    console.log('=> Archiving Bundle');
+    logStep('=> Archiving Bundle');
     const sourceDir = api.resolvePath(buildLocation, 'bundle');
 
     const output = fs.createWriteStream(bundlePath);
@@ -67,7 +67,7 @@ export function archiveApp(buildLocation, api) {
     output.once('close', resolve);
 
     archive.once('error', (err) => {
-      console.log('=> Archiving failed:', err.message);
+      logStep('=> Archiving failed:', err.message);
       reject(err);
     });
 
