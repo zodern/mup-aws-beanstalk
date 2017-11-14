@@ -1,9 +1,9 @@
-export function createDesiredConfig(mupConfig, buildLocation) {
+export function createDesiredConfig(mupConfig, buildLocation, api) {
   const config = {
     OptionSettings: [{
       Namespace: 'aws:elasticbeanstalk:container:nodejs',
       OptionName: 'NodeVersion',
-      Value: '4.8.4'
+      Value: '8.4.0'
     }, {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'InstanceType',
@@ -11,8 +11,13 @@ export function createDesiredConfig(mupConfig, buildLocation) {
     }]
   };
 
-  Object.keys(mupConfig.app.env).forEach((envName) => {
-    const value = mupConfig.app.env[envName];
+  const { env } = mupConfig.app;
+  const settingsString = JSON.stringify(api.getSettings());
+
+  env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
+
+  Object.keys(env).forEach((envName) => {
+    const value = env[envName];
 
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',

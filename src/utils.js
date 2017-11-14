@@ -97,3 +97,31 @@ export async function getLogs(api) {
 
   return Promise.all(Object.values(logsForServer).map(url => axios.get(url)));
 }
+
+export function getNodeVersion(api, bundlePath) {
+  let star = fs.readFileSync(api.resolvePath(bundlePath, 'bundle/star.json')).toString();
+  const nodeVersionTxt = fs.readFileSync(api.resolvePath(bundlePath, 'bundle/.node_version.txt')).toString();
+
+  star = JSON.parse(star);
+
+  if (star.npmVersion) {
+    return {
+      nodeVersion: star.nodeVersion,
+      npmVersion: star.npmVersion
+    };
+  }
+
+  const nodeVersion = nodeVersionTxt.substr(1);
+
+  if (nodeVersion.startsWith('4')) {
+    return {
+      nodeVersion,
+      npmVersion: '4.6.1'
+    };
+  }
+
+  return {
+    nodeVersion,
+    npmVersion: '3.10.5'
+  };
+}

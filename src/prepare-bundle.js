@@ -1,6 +1,7 @@
 import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
+import { getNodeVersion } from './utils';
 
 function copy(source, destination, vars = {}) {
   let contents = fs.readFileSync(source).toString();
@@ -21,6 +22,23 @@ export function injectFiles(api, name, version, bundlePath) {
   sourcePath = api.resolvePath(__dirname, './assets/npmrc');
   destPath = api.resolvePath(bundlePath, 'bundle/.npmrc');
   copy(sourcePath, destPath);
+
+  sourcePath = api.resolvePath(__dirname, './assets/start.sh');
+  destPath = api.resolvePath(bundlePath, 'bundle/start.sh');
+  copy(sourcePath, destPath);
+
+  try {
+    fs.mkdirSync(api.resolvePath(bundlePath, 'bundle/.ebextensions'));
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      console.log(e);
+    }
+  }
+
+  const { nodeVersion, npmVersion } = getNodeVersion(api, bundlePath);
+  sourcePath = api.resolvePath(__dirname, './assets/node.yaml');
+  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/node.config');
+  copy(sourcePath, destPath, { nodeVersion, npmVersion });
 }
 
 export function archiveApp(buildLocation, api) {
