@@ -5,6 +5,7 @@ import {
   injectFiles
 } from './prepare-bundle';
 import {
+  getLogs,
   names,
   tmpBuildPath,
   shouldRebuild
@@ -122,8 +123,29 @@ export async function deploy(api) {
   await waitForEnvReady(config, true);
 }
 
-export function logs() {
+export async function logs(api) {
+  const logsContent = await getLogs(api);
 
+  logsContent.forEach(({ data }) => {
+    // console.log(data);
+    data = data.split('-------------------------------------\n/var/log/');
+    console.log(data.length);
+    process.stdout.write(data[1]);
+  });
+}
+
+export async function logsNginx(api) {
+
+}
+
+export async function logsEb(api) {
+  const logsContent = await getLogs(api);
+
+  logsContent.forEach(({ data }) => {
+    data = data.split('\n\n\n-------------------------------------\n/var/log/');
+    console.log(data.length);
+    process.stdout.write(data[2]);
+  });
 }
 
 export function start() {

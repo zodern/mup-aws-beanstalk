@@ -29,10 +29,12 @@
   "dependencies": {
     "archiver": "^2.1.0",
     "aws-sdk": "^2.145.0",
+    "axios": "^0.17.1",
     "babel-polyfill": "^6.26.0",
     "ejs": "^2.5.7",
     "eslint-config-airbnb": "^16.1.0",
     "joi": "^10.6.0",
+    "lodash": "^4.17.4",
     "random-seed": "^0.3.0",
     "tar": "^4.0.2",
     "uuid": "^3.1.0"

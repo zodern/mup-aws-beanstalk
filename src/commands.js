@@ -33,7 +33,13 @@ export const logs = {
       });
   },
   handler: commandHandlers.logs
-}
+};
+
+export const logsEb = {
+  name: 'logs-eb',
+  description: 'Logs from setting up server and installing npm dependencies',
+  handler: commandHandlers.logsEb
+};
 
 
 export const start = {
