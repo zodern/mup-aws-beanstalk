@@ -37,7 +37,9 @@ export function names(config) {
     bucket: `mup-${config.app.name}`,
     environment: `mup-env-${config.app.name}`,
     app: `mup-${config.app.name}`,
-    bundlePrefix: `mup/bundles/${config.app.name}/`
+    bundlePrefix: `mup/bundles/${config.app.name}/`,
+    instanceProfile: 'aws-elasticbeanstalk-ec2-role2',
+    serviceRole: 'aws-elasticbeanstalk-service-role2'
   };
 }
 
@@ -129,4 +131,116 @@ export function getNodeVersion(api, bundlePath) {
     nodeVersion,
     npmVersion: '3.10.5'
   };
+}
+
+export async function attachPolicies(config, roleName, policies) {
+  const {
+    iam
+  } = configure(config.app);
+
+  const promises = [];
+
+  policies.forEach((policy) => {
+    const promise = iam.attachRolePolicy({
+      RoleName: roleName,
+      PolicyArn: policy
+    }).promise();
+
+    promises.push(promise);
+  });
+
+  await Promise.all(promises);
+}
+
+export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
+  const {
+    iam
+  } = configure(config.app);
+
+  let exists = true;
+
+  try {
+    await iam.getRole({
+      RoleName: name
+    }).promise();
+  } catch (e) {
+    exists = false;
+  }
+
+  if (!exists) {
+    await iam.createRole({
+      RoleName: name,
+      AssumeRolePolicyDocument: assumeRolePolicyDocument
+    }).promise();
+  }
+}
+
+export async function ensureInstanceProfileExists(config, name) {
+  const {
+    iam
+  } = configure(config.app);
+
+  let exists = true;
+
+  try {
+    await iam.getInstanceProfile({
+      InstanceProfileName: name
+    }).promise();
+  } catch (e) {
+    exists = false;
+  }
+
+  if (!exists) {
+    await iam.createInstanceProfile({
+      InstanceProfileName: name
+    }).promise();
+  }
+}
+
+export async function ensureRoleAdded(config, instanceProfile, role) {
+  const {
+    iam
+  } = configure(config.app);
+
+  let added = true;
+
+
+  const { InstanceProfile } = await iam.getInstanceProfile({
+    InstanceProfileName: instanceProfile
+  }).promise();
+
+  if (InstanceProfile.Roles.length === 0 || InstanceProfile.Roles[0].RoleName !== role) {
+    added = false;
+  }
+
+  if (!added) {
+    await iam.addRoleToInstanceProfile({
+      InstanceProfileName: instanceProfile,
+      RoleName: role
+    }).promise();
+  }
+}
+
+export async function ensurePoliciesAttached(config, role, policies) {
+  const {
+    iam
+  } = configure(config.app);
+
+  let { AttachedPolicies } = await iam.listAttachedRolePolicies({
+    RoleName: role
+  }).promise();
+
+  AttachedPolicies = AttachedPolicies.map(policy => policy.PolicyArn);
+
+  const unattachedPolicies = policies.reduce((result, policy) => {
+    if (AttachedPolicies.indexOf(policy) === -1) {
+      result.push(policy);
+    }
+
+    return result;
+  }, []);
+
+  if (unattachedPolicies.length > 0) {
+    await attachPolicies(config, role, unattachedPolicies);
+  }
 }

@@ -18,7 +18,8 @@ export default function configure({ auth, name }) {
 
   client = {
     s3: new AWS.S3({ params: { Bucket: `mup-${name}` }, apiVersion: '2006-03-01' }),
-    beanstalk: new AWS.ElasticBeanstalk({ apiVersion: '2010-12-01' })
+    beanstalk: new AWS.ElasticBeanstalk({ apiVersion: '2010-12-01' }),
+    iam: new AWS.IAM({ apiVersion: '2010-05-08' })
   };
 
   return client;

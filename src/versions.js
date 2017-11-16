@@ -76,7 +76,7 @@ export async function largestVersion(api) {
 
 export async function oldVersions(api) {
   const appVersions = await ebVersions(api);
-  const bundleVersions = await s3Versions(api);=
+  const bundleVersions = await s3Versions(api);
 
   // find unused bundles
   const oldBundleVersions = difference(bundleVersions, appVersions);

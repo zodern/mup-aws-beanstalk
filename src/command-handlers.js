@@ -5,6 +5,10 @@ import {
   injectFiles
 } from './prepare-bundle';
 import {
+  ensureInstanceProfileExists,
+  ensureRoleExists,
+  ensureRoleAdded,
+  ensurePoliciesAttached,
   getLogs,
   logStep,
   names,
@@ -26,15 +30,20 @@ import {
 } from './env-ready';
 
 export async function setup(api) {
-  logStep('=> Setting up');
-
-  const appConfig = api.getConfig().app;
+  const config = api.getConfig();
+  const appConfig = config.app;
   const {
     s3,
     beanstalk
   } = configure(appConfig);
-  const bucketName = `mup-${appConfig.name}`;
-  const appName = `mup-${appConfig.name}`;
+
+  const {
+    bucket: bucketName,
+    app: appName,
+    instanceProfile
+  } = names(config);
+
+  logStep('=> Setting up');
 
   // Create bucket if needed
   const {
@@ -47,6 +56,17 @@ export async function setup(api) {
     }).promise();
     console.log('  Created Bucket');
   }
+
+  logStep('=> Ensuring IAM Roles and Instance Profiles are setup');
+
+  await ensureRoleExists(config, instanceProfile, '{ "Version": "2008-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }');
+  await ensureInstanceProfileExists(config, instanceProfile);
+  await ensurePoliciesAttached(config, instanceProfile, [
+    'arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier',
+    'arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker',
+    'arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier'
+  ]);
+  await ensureRoleAdded(config, instanceProfile, instanceProfile);
 
   // Create beanstalk application if needed
   const {
@@ -62,8 +82,6 @@ export async function setup(api) {
     await beanstalk.createApplication(params).promise();
     console.log('  Created Beanstalk application');
   }
-
-  // TODO: check if there is an environment, and then check if the VersionLifecycleConfig is setup
 }
 
 export async function deploy(api) {
@@ -129,7 +147,9 @@ export async function deploy(api) {
 export async function logs(api) {
   const logsContent = await getLogs(api);
 
-  logsContent.forEach(({ data }) => {
+  logsContent.forEach(({
+    data
+  }) => {
     // console.log(data);
     data = data.split('-------------------------------------\n/var/log/');
     console.log(data.length);
@@ -144,7 +164,9 @@ export async function logsNginx(api) {
 export async function logsEb(api) {
   const logsContent = await getLogs(api);
 
-  logsContent.forEach(({ data }) => {
+  logsContent.forEach(({
+    data
+  }) => {
     data = data.split('\n\n\n-------------------------------------\n/var/log/');
     console.log(data.length);
     process.stdout.write(data[2]);
@@ -165,11 +187,17 @@ export function restart() {
 
 export async function clean(api) {
   const config = api.getConfig();
-  const { app } = names(config);
-  const { beanstalk } = configure(config.app);
+  const {
+    app
+  } = names(config);
+  const {
+    beanstalk
+  } = configure(config.app);
 
   logStep('=> Finding old versions');
-  const { versions } = await oldVersions(api);
+  const {
+    versions
+  } = await oldVersions(api);
 
   logStep('=> Removing old versions');
 
@@ -211,7 +239,7 @@ export async function reconfig(api) {
   const desiredEbConfig = createDesiredConfig(api.getConfig(), '', api);
 
   if (!Environments.find(env => env.Status !== 'Terminated')) {
-    const version = await ebVersions(api);
+    const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
       ApplicationName: app,
       EnvironmentName: environment,
@@ -235,7 +263,6 @@ export async function reconfig(api) {
   }
 
   await waitForEnvReady(config, true);
-  // TODO: Wait until aws finished making changes
 }
 
 export async function events(api) {
@@ -246,7 +273,9 @@ export async function events(api) {
     environment
   } = names(api.getConfig());
 
-  const { Events: envEvents } = await beanstalk.describeEvents({
+  const {
+    Events: envEvents
+  } = await beanstalk.describeEvents({
     EnvironmentName: environment
   }).promise();
 
