@@ -49,7 +49,7 @@ export async function showEvents(config, lastEventDate) {
   return new Date(Events[0].EventDate);
 }
 
-export async function waitForEnvReady(config, showProgress) {
+async function checker(config, prop, wantedValue, showProgress) {
   const {
     beanstalk
   } = configure(config.app);
@@ -78,12 +78,13 @@ export async function waitForEnvReady(config, showProgress) {
         reject(e);
       }
 
-      const status = result.Environments[0].Status;
-      if (status !== 'Ready' && status !== lastStatus) {
-        logStep(`=> Waiting for Beanstalk Environment to finish ${status.toLowerCase()}`);
-        console.log('  It could take a few minutes');
-        lastStatus = status;
-      } else if (status === 'Ready') {
+      const value = result.Environments[0][prop];
+      if (value !== wantedValue && value !== lastStatus) {
+        const text = prop === 'Health' ? 'be' : 'finish';
+
+        logStep(`=> Waiting for Beanstalk Environment to ${text} ${value.toLowerCase()}`);
+        lastStatus = value;
+      } else if (value === wantedValue) {
         // TODO: run showEvents one last time
         resolve();
 
@@ -103,4 +104,12 @@ export async function waitForEnvReady(config, showProgress) {
 
     check();
   });
+}
+
+export async function waitForEnvReady(config, showProgress) {
+  await checker(config, 'Status', 'Ready', showProgress);
+}
+
+export async function waitForHealth(config, health = 'Green', showProgress) {
+  await checker(config, 'Health', health, showProgress);
 }

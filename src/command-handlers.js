@@ -26,7 +26,8 @@ import {
 } from './eb-config';
 
 import {
-  waitForEnvReady
+  waitForEnvReady,
+  waitForHealth
 } from './env-ready';
 
 export async function setup(api) {
@@ -173,16 +174,83 @@ export async function logsEb(api) {
   });
 }
 
-export function start() {
+export async function start(api) {
+  const config = api.getConfig();
+  const {
+    beanstalk,
+    autoScaling
+  } = await configure(config.app);
+  const {
+    environment
+  } = names(config);
 
+  logStep('=> Starting App');
+
+  const { EnvironmentResources } = await beanstalk.describeEnvironmentResources({
+    EnvironmentName: environment
+  }).promise();
+
+  const autoScalingGroup = EnvironmentResources.AutoScalingGroups[0].Name;
+
+  const {
+    minInstances,
+    maxInstances
+  } = config.app;
+
+  await autoScaling.updateAutoScalingGroup({
+    AutoScalingGroupName: autoScalingGroup,
+    MaxSize: maxInstances,
+    MinSize: minInstances,
+    DesiredCapacity: minInstances
+  }).promise();
+
+  await waitForHealth(config);
 }
 
-export function stop() {
+export async function stop(api) {
+  const config = api.getConfig();
+  const {
+    beanstalk,
+    autoScaling
+  } = await configure(config.app);
+  const {
+    environment
+  } = names(config);
 
+  logStep('=> Stopping App');
+
+  const { EnvironmentResources } = await beanstalk.describeEnvironmentResources({
+    EnvironmentName: environment
+  }).promise();
+
+  const autoScalingGroup = EnvironmentResources.AutoScalingGroups[0].Name;
+
+  await autoScaling.updateAutoScalingGroup({
+    AutoScalingGroupName: autoScalingGroup,
+    MaxSize: 0,
+    MinSize: 0,
+    DesiredCapacity: 0
+  }).promise();
+
+  await waitForHealth(config, 'Red');
 }
 
-export function restart() {
+export async function restart(api) {
+  const config = api.getConfig();
+  const {
+    beanstalk
+  } = await configure(config.app);
+  const {
+    environment
+  } = names(config);
 
+  logStep('=> Restarting App');
+
+  await beanstalk.restartAppServer({
+    EnvironmentName: environment
+  }).promise();
+
+  await waitForEnvReady(config, false);
 }
 
 export async function clean(api) {
