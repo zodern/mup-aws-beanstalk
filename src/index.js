@@ -15,7 +15,7 @@ export const validate = {
   }
 };
 
-export function prepareBundle(config) {
+export function prepareConfig(config) {
   if (!config.app || config.app.type !== 'aws-beanstalk') {
     return config;
   }
@@ -25,6 +25,11 @@ export function prepareBundle(config) {
   };
 
   config.app.buildOptions = config.app.buildOptions || defaultBuildOptions;
+
+  // This will change 0 to 1. The validator will warn when the number is 0
+  // To have 0 instances, `mup stop` should be used
+  config.app.minInstances = config.app.minInstances || 1;
+  config.app.maxInstances = config.app.maxInstances || 1;
 
   return config;
 }
