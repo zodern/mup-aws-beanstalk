@@ -11,5 +11,8 @@ echo $(node --version)
 echo "Npm version"
 echo $(npm --version)
 
+echo "=> Starting health check server"
+node health-check.js &
+
 echo "=> Starting App"
 node main.js

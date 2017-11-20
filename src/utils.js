@@ -38,8 +38,8 @@ export function names(config) {
     environment: `mup-env-${config.app.name}`,
     app: `mup-${config.app.name}`,
     bundlePrefix: `mup/bundles/${config.app.name}/`,
-    instanceProfile: 'aws-elasticbeanstalk-ec2-role2',
-    serviceRole: 'aws-elasticbeanstalk-service-role2'
+    instanceProfile: 'aws-elasticbeanstalk-ec2-role',
+    serviceRole: 'aws-elasticbeanstalk-service-role'
   };
 }
 

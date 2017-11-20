@@ -39,6 +39,14 @@ export function injectFiles(api, name, version, bundlePath) {
   sourcePath = api.resolvePath(__dirname, './assets/node.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/node.config');
   copy(sourcePath, destPath, { nodeVersion, npmVersion });
+
+  sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
+  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
+  copy(sourcePath, destPath);
+
+  sourcePath = api.resolvePath(__dirname, './assets/health-check.js');
+  destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');
+  copy(sourcePath, destPath);
 }
 
 export function archiveApp(buildLocation, api) {

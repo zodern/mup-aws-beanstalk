@@ -22,6 +22,26 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       OptionName: 'MaxSize',
       Value: maxInstances.toString()
     }, {
+      Namespace: 'aws:autoscaling:trigger',
+      OptionName: 'MeasureName',
+      Value: 'CPUUtilization'
+    }, {
+      Namespace: 'aws:autoscaling:trigger',
+      OptionName: 'Statistic',
+      Value: 'Average'
+    }, {
+      Namespace: 'aws:autoscaling:trigger',
+      OptionName: 'Unit',
+      Value: 'Percent'
+    }, {
+      Namespace: 'aws:autoscaling:trigger',
+      OptionName: 'UpperThreshold',
+      Value: '75'
+    }, {
+      Namespace: 'aws:autoscaling:trigger',
+      OptionName: 'LowerThreshold',
+      Value: '35'
+    }, {
       Namespace: 'aws:elasticbeanstalk:container:nodejs',
       OptionName: 'NodeVersion',
       Value: '8.4.0'
@@ -33,12 +53,33 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'IamInstanceProfile',
       Value: instanceProfile
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment:process:default',
+      OptionName: 'HealthyThresholdCount',
+      Value: '2'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment:process:default',
+      OptionName: 'HealthCheckPath',
+      Value: '/aws-health-check-3984729847289743128904723'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment',
+      OptionName: 'EnvironmentType',
+      Value: 'LoadBalanced'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment',
+      OptionName: 'LoadBalancerType',
+      Value: 'application'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:command',
+      OptionName: 'DeploymentPolicy',
+      Value: 'RollingWithAdditionalBatch'
     }]
   };
 
   const settingsString = JSON.stringify(api.getSettings());
 
   env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
+  env.PORT = 8081;
 
   Object.keys(env).forEach((envName) => {
     const value = env[envName];
@@ -46,7 +87,7 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',
       OptionName: envName,
-      Value: value
+      Value: value.toString()
     });
   });
 
