@@ -33,3 +33,56 @@ export function prepareConfig(config) {
 
   return config;
 }
+
+function isBeanstalkApp(api) {
+  const config = api.getConfig();
+
+  if (config.app && config.app.type === 'aws-beanstalk') {
+    return true;
+  }
+
+  return false;
+}
+
+export const hooks = {
+  'post.setup': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.setup');
+    }
+  },
+  'post.deploy': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.deploy');
+    }
+  },
+  'post.logs': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.logs');
+    }
+  },
+  'post.start': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.start');
+    }
+  },
+  'post.stop': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.stop');
+    }
+  },
+  'post.restart': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.restart');
+    }
+  },
+  'post.reconfig': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.reconfig');
+    }
+  },
+  'post.status': (api) => {
+    if (isBeanstalkApp(api)) {
+      return api.runCommand('beanstalk.status');
+    }
+  }
+};
