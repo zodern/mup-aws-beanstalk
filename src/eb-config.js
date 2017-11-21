@@ -78,6 +78,14 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       OptionName: 'DeploymentPolicy',
       Value: 'RollingWithAdditionalBatch'
     }, {
+      Namespace: 'aws:elasticbeanstalk:command',
+      OptionName: 'BatchSizeType',
+      Value: 'Percentage'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:command',
+      OptionName: 'BatchSize',
+      Value: '30'
+    }, {
       Namespace: 'aws:elasticbeanstalk:environment',
       OptionName: 'ServiceRole',
       Value: serviceRole
