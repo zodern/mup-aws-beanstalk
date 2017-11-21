@@ -67,9 +67,7 @@ export const clean = {
   handler: commandHandlers.clean
 };
 
-// Hidden commands
-
 export const reconfig = {
-  description: false,
+  description: 'Update env variables, instance count, and Meteor settings.json',
   handler: commandHandlers.reconfig
 };

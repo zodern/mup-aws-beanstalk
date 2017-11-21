@@ -1,4 +1,7 @@
 import {
+  difference
+} from 'lodash';
+import {
   names
 } from './utils';
 
@@ -104,5 +107,27 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
 }
 
 export function diffConfig(current, desired) {
+  function convertToObject(result, option) {
+    result[`${option.Namespace}-${option.OptionName}`] = option;
 
+    return result;
+  }
+
+  current = current.reduce(convertToObject, {});
+
+  desired = desired.reduce(convertToObject, {});
+
+  const toRemove = difference(Object.keys(current), Object.keys(desired))
+    .filter(key => key.indexOf('aws:elasticbeanstalk:application:environment-') === 0)
+    .map((key) => {
+      const option = current[key];
+      return {
+        Namespace: option.Namespace,
+        OptionName: option.OptionName
+      };
+    });
+
+  return {
+    toRemove
+  };
 }

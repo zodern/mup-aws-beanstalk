@@ -22,7 +22,8 @@ import {
 } from './versions';
 
 import {
-  createDesiredConfig
+  createDesiredConfig,
+  diffConfig
 } from './eb-config';
 
 import {
@@ -329,11 +330,24 @@ export async function reconfig(api) {
     console.log(' Created Environment');
   } else {
     await waitForEnvReady(config, false);
+    const {
+      ConfigurationSettings
+    } = await beanstalk.describeConfigurationSettings({
+      EnvironmentName: environment,
+      ApplicationName: app
+    }).promise();
+    const {
+      toRemove
+    } = diffConfig(
+      ConfigurationSettings[0].OptionSettings,
+      desiredEbConfig.OptionSettings
+    );
 
     // TODO: only update diff, and remove extra items
     await beanstalk.updateEnvironment({
       EnvironmentName: environment,
-      OptionSettings: desiredEbConfig.OptionSettings
+      OptionSettings: desiredEbConfig.OptionSettings,
+      OptionsToRemove: toRemove
     }).promise();
     console.log('  Updated Environment');
   }
