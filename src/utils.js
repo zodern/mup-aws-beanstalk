@@ -205,7 +205,9 @@ export async function ensureRoleAdded(config, instanceProfile, role) {
   let added = true;
 
 
-  const { InstanceProfile } = await iam.getInstanceProfile({
+  const {
+    InstanceProfile
+  } = await iam.getInstanceProfile({
     InstanceProfileName: instanceProfile
   }).promise();
 
@@ -226,7 +228,9 @@ export async function ensurePoliciesAttached(config, role, policies) {
     iam
   } = configure(config.app);
 
-  let { AttachedPolicies } = await iam.listAttachedRolePolicies({
+  let {
+    AttachedPolicies
+  } = await iam.listAttachedRolePolicies({
     RoleName: role
   }).promise();
 
@@ -243,4 +247,15 @@ export async function ensurePoliciesAttached(config, role, policies) {
   if (unattachedPolicies.length > 0) {
     await attachPolicies(config, role, unattachedPolicies);
   }
+}
+
+export function coloredStatusText(envColor, text) {
+  if (envColor === 'Green') {
+    return chalk.green(text);
+  } else if (envColor === 'Yellow') {
+    return chalk.yellow(text);
+  } else if (envColor === 'Red') {
+    return chalk.red(text);
+  }
+  return text;
 }

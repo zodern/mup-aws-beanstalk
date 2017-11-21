@@ -71,3 +71,8 @@ export const reconfig = {
   description: 'Update env variables, instance count, and Meteor settings.json',
   handler: commandHandlers.reconfig
 };
+
+export const status = {
+  description: 'View status of app',
+  handler: commandHandlers.status
+};
