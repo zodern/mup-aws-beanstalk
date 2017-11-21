@@ -9,7 +9,8 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
     maxInstances
   } = mupConfig.app;
   const {
-    instanceProfile
+    instanceProfile,
+    serviceRole
   } = names(mupConfig);
 
   const config = {
@@ -73,6 +74,14 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       Namespace: 'aws:elasticbeanstalk:command',
       OptionName: 'DeploymentPolicy',
       Value: 'RollingWithAdditionalBatch'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment',
+      OptionName: 'ServiceRole',
+      Value: serviceRole
+    }, {
+      Namespace: 'aws:elasticbeanstalk:healthreporting:system:',
+      OptionName: 'SystemType',
+      Value: 'enhanced'
     }]
   };
 

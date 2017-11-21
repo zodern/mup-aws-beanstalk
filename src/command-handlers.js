@@ -41,7 +41,8 @@ export async function setup(api) {
   const {
     bucket: bucketName,
     app: appName,
-    instanceProfile
+    instanceProfile,
+    serviceRole
   } = names(config);
 
   logStep('=> Setting up');
@@ -60,6 +61,7 @@ export async function setup(api) {
 
   logStep('=> Ensuring IAM Roles and Instance Profiles are setup');
 
+  // Create role and instance profile
   await ensureRoleExists(config, instanceProfile, '{ "Version": "2008-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }');
   await ensureInstanceProfileExists(config, instanceProfile);
   await ensurePoliciesAttached(config, instanceProfile, [
@@ -68,6 +70,13 @@ export async function setup(api) {
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier'
   ]);
   await ensureRoleAdded(config, instanceProfile, instanceProfile);
+
+  // Create role used by enhanced health
+  await ensureRoleExists(config, serviceRole, '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "elasticbeanstalk.amazonaws.com" }, "Action": "sts:AssumeRole", "Condition": { "StringEquals": { "sts:ExternalId": "elasticbeanstalk" } } } ] }');
+  await ensurePoliciesAttached(config, serviceRole, [
+    'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth',
+    'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
+  ]);
 
   // Create beanstalk application if needed
   const {
@@ -153,7 +162,6 @@ export async function logs(api) {
   }) => {
     // console.log(data);
     data = data.split('-------------------------------------\n/var/log/');
-    console.log(data.length);
     process.stdout.write(data[1]);
   });
 }
