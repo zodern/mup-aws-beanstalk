@@ -8,6 +8,7 @@ import {
 export function createDesiredConfig(mupConfig, buildLocation, api) {
   const {
     env,
+    instanceType,
     minInstances,
     maxInstances
   } = mupConfig.app;
@@ -44,7 +45,7 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
     }, {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'InstanceType',
-      Value: 't2.micro'
+      Value: instanceType
     }, {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'IamInstanceProfile',

@@ -31,6 +31,8 @@ export function prepareConfig(config) {
   config.app.minInstances = config.app.minInstances || 1;
   config.app.maxInstances = config.app.maxInstances || config.app.minInstances;
 
+  config.app.instanceType = config.app.instanceType || 't2.micro';
+
   return config;
 }
 

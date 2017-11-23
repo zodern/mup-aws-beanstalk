@@ -23,7 +23,8 @@ const schema = joi.object().keys({
   sslDomains: joi.array().items(joi.string()),
   region: joi.string(),
   minInstances: joi.number().min(1).required(),
-  maxInstances: joi.number().min(1)
+  maxInstances: joi.number().min(1),
+  instanceType: joi.string(),
 });
 
 export default function (config, utils) {
