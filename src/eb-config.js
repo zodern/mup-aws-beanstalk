@@ -8,9 +8,7 @@ import {
 export function createDesiredConfig(mupConfig, buildLocation, api) {
   const {
     env,
-    instanceType,
-    minInstances,
-    maxInstances
+    instanceType
   } = mupConfig.app;
   const {
     instanceProfile,
@@ -127,10 +125,10 @@ export function scalingConfigChanged(currentConfig, mupConfig) {
   });
 
   return currentMinInstances !== minInstances.toString() ||
-    currentMaxInstances !== maxInstances.toString()
+    currentMaxInstances !== maxInstances.toString();
 }
 
-export function scalingConfig({minInstances, maxInstances}) {
+export function scalingConfig({ minInstances, maxInstances }) {
   return {
     OptionSettings: [
       {
