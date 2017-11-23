@@ -18,14 +18,6 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
 
   const config = {
     OptionSettings: [{
-      Namespace: 'aws:autoscaling:asg',
-      OptionName: 'MinSize',
-      Value: minInstances.toString()
-    }, {
-      Namespace: 'aws:autoscaling:asg',
-      OptionName: 'MaxSize',
-      Value: maxInstances.toString()
-    }, {
       Namespace: 'aws:autoscaling:trigger',
       OptionName: 'MeasureName',
       Value: 'CPUUtilization'
@@ -112,6 +104,45 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
   });
 
   return config;
+}
+
+export function scalingConfigChanged(currentConfig, mupConfig) {
+  const {
+    minInstances,
+    maxInstances
+  } = mupConfig.app;
+
+  let currentMinInstances = 0;
+  let currentMaxInstances = 0;
+
+  currentConfig.forEach((item) => {
+    if (item.Namespace === 'aws:autoscaling:asg') {
+      if (item.OptionName === 'MinSize') {
+        currentMinInstances = item.Value;
+      } else if (item.OptionName === 'MaxSize') {
+        currentMaxInstances = item.Value;
+      }
+    }
+  });
+
+  return currentMinInstances !== minInstances.toString() ||
+    currentMaxInstances !== maxInstances.toString()
+}
+
+export function scalingConfig({minInstances, maxInstances}) {
+  return {
+    OptionSettings: [
+      {
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'MinSize',
+        Value: minInstances.toString()
+      }, {
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'MaxSize',
+        Value: maxInstances.toString()
+      }
+    ]
+  };
 }
 
 export function diffConfig(current, desired) {

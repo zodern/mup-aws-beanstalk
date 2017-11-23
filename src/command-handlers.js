@@ -24,7 +24,9 @@ import {
 
 import {
   createDesiredConfig,
-  diffConfig
+  diffConfig,
+  scalingConfig,
+  scalingConfigChanged
 } from './eb-config';
 
 import {
@@ -354,9 +356,19 @@ export async function reconfig(api) {
       OptionSettings: desiredEbConfig.OptionSettings,
       OptionsToRemove: toRemove
     }).promise();
-    console.log('  Updated Environment');
-  }
 
+    console.log('  Updated Environment');
+
+    if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
+  await waitForEnvReady(config, true);
+
+      logStep('=> Configuring scaling');
+      await beanstalk.updateEnvironment({
+        EnvironmentName: environment,
+        OptionSettings: scalingConfig(config.app).OptionSettings
+      }).promise()
+}
+  }
   await waitForEnvReady(config, true);
 }
 
