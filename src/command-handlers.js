@@ -248,7 +248,7 @@ export async function stop(api) {
     DesiredCapacity: 0
   }).promise();
 
-  await waitForHealth(config, 'Red');
+  await waitForHealth(config, 'Grey');
 }
 
 export async function restart(api) {
@@ -421,26 +421,37 @@ export async function status(api) {
 
   console.log(`Environment Status: ${result.Status}`);
   console.log(`Health Status: ${coloredStatusText(result.Color, result.HealthStatus)}`);
+  if (result.Causes.length > 0) {
+    console.log('Causes: ');
+    result.Causes.forEach(cause => console.log(`  ${cause}`));
+  }
   console.log('');
-  console.log(`=== Metrics For Last ${Duration} Minutes ===`);
+  console.log(`=== Metrics For Last ${Duration || 'Unknown'} Minutes ===`);
   console.log(`  Requests: ${RequestCount}`);
-  console.log('  Status Codes');
-  console.log(`    2xx: ${StatusCodes.Status2xx}`);
-  console.log(`    3xx: ${StatusCodes.Status3xx}`);
-  console.log(`    4xx: ${StatusCodes.Status4xx}`);
-  console.log(`    5xx: ${StatusCodes.Status5xx}`);
-  console.log('  Latency');
-  console.log(`    99.9%: ${Latency.P999}`);
-  console.log(`    99%  : ${Latency.P99}`);
-  console.log(`    95%  : ${Latency.P95}`);
-  console.log(`    90%  : ${Latency.P90}`);
-  console.log(`    85%  : ${Latency.P85}`);
-  console.log(`    75%  : ${Latency.P75}`);
-  console.log(`    50%  : ${Latency.P50}`);
-  console.log(`    10%  : ${Latency.P10}`);
+  if (StatusCodes) {
+    console.log('  Status Codes');
+    console.log(`    2xx: ${StatusCodes.Status2xx}`);
+    console.log(`    3xx: ${StatusCodes.Status3xx}`);
+    console.log(`    4xx: ${StatusCodes.Status4xx}`);
+    console.log(`    5xx: ${StatusCodes.Status5xx}`);
+  }
+  if (Latency) {
+    console.log('  Latency');
+    console.log(`    99.9%: ${Latency.P999}`);
+    console.log(`    99%  : ${Latency.P99}`);
+    console.log(`    95%  : ${Latency.P95}`);
+    console.log(`    90%  : ${Latency.P90}`);
+    console.log(`    85%  : ${Latency.P85}`);
+    console.log(`    75%  : ${Latency.P75}`);
+    console.log(`    50%  : ${Latency.P50}`);
+    console.log(`    10%  : ${Latency.P10}`);
+  }
   console.log('');
   console.log('=== Instances ===');
   InstanceHealthList.forEach((instance) => {
     console.log(`  ${instance.InstanceId}: ${coloredStatusText(instance.Color, instance.HealthStatus)}`);
   });
+  if (InstanceHealthList.length === 0) {
+    console.log('  0 Instances');
+  }
 }
