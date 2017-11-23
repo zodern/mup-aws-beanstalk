@@ -29,7 +29,7 @@ export function prepareConfig(config) {
   // This will change 0 to 1. The validator will warn when the number is 0
   // To have 0 instances, `mup stop` should be used
   config.app.minInstances = config.app.minInstances || 1;
-  config.app.maxInstances = config.app.maxInstances || 1;
+  config.app.maxInstances = config.app.maxInstances || config.app.minInstances;
 
   return config;
 }
