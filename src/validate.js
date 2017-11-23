@@ -4,7 +4,6 @@ const schema = joi.object().keys({
   name: joi.string().min(1).required(),
   path: joi.string().min(1).required(),
   type: joi.string().required(),
-  enableUploadProgressBar: joi.bool(),
   buildOptions: joi.object().keys({
     serverOnly: joi.bool(),
     debug: joi.bool(),
@@ -13,7 +12,18 @@ const schema = joi.object().keys({
     server: joi.string().uri(),
     allowIncompatibleUpdates: joi.boolean(),
     executable: joi.string()
-  })
+  }),
+  // The meteor plugin adds the docker object, which is a bug in mup
+  docker: joi.object(),
+  env: joi.object(),
+  auth: joi.object().keys({
+    id: joi.string().required(),
+    secret: joi.string().required()
+  }).required(),
+  sslDomains: joi.array().items(joi.string()),
+  region: joi.string(),
+  minInstances: joi.number().min(1).required(),
+  maxInstances: joi.number().min(1)
 });
 
 export default function (config, utils) {
