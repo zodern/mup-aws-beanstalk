@@ -1,0 +1,5 @@
+packages:
+    "yum":
+      <% for(var key in packages) { %>
+      <%- key %>: "<%- packages[key] %>"
+      <% } %>

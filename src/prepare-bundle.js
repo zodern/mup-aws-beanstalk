@@ -11,7 +11,7 @@ function copy(source, destination, vars = {}) {
   fs.writeFileSync(destination, contents);
 }
 
-export function injectFiles(api, name, version, bundlePath) {
+export function injectFiles(api, name, version, yumPackages, bundlePath) {
   let sourcePath = api.resolvePath(__dirname, './assets/package.json');
   let destPath = api.resolvePath(bundlePath, 'bundle/package.json');
   copy(sourcePath, destPath, {
@@ -43,6 +43,10 @@ export function injectFiles(api, name, version, bundlePath) {
   sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
   copy(sourcePath, destPath);
+
+  sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');
+  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/packages.config');
+  copy(sourcePath, destPath, { packages: yumPackages })
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');
   destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');

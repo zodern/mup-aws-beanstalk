@@ -124,7 +124,7 @@ export async function deploy(api) {
 
   if (willBuild) {
     await api.runCommand('meteor.build');
-    injectFiles(api, app, nextVersion, config.app.buildOptions.buildLocation);
+    injectFiles(api, app, nextVersion, config.app.yumPackages || {}, config.app.buildOptions.buildLocation);
     await archiveApp(config.app.buildOptions.buildLocation, api);
   }
 
