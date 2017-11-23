@@ -3,14 +3,14 @@ import AWS from 'aws-sdk';
 let client = {};
 let configured = false;
 
-export default function configure({ auth, name }) {
+export default function configure({ auth, name, region }) {
   if (configured) {
     return client;
   }
   const options = {
     accessKeyId: auth.id,
     secretAccessKey: auth.secret,
-    region: 'us-east-1'
+    region: region || 'us-east-1'
   };
 
   AWS.config.update(options);
