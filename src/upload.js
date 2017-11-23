@@ -1,7 +1,7 @@
 import fs from 'fs';
 import client from './aws';
 
-export default function upload(appConfig, bucket, key, bundlePath, showProgress) {
+export default function upload(appConfig, bucket, key, bundlePath) {
   const { s3 } = client(appConfig);
 
   const params = { Bucket: bucket };
@@ -14,12 +14,18 @@ export default function upload(appConfig, bucket, key, bundlePath, showProgress)
   params.Key = key;
 
   return new Promise((resolve, reject) => {
+    let lastPercentage = -1;
+
     const uploader = s3.upload(params);
 
     uploader.on('httpUploadProgress', (progress) => {
       const percentage = Math.floor(progress.loaded / progress.total) * 100;
 
-      console.log(`  Uploaded ${percentage}%`);
+      if (percentage !== lastPercentage) {
+        console.log(`  Uploaded ${percentage}%`);
+      }
+
+      lastPercentage = percentage;
 
       if (percentage === 100) {
         console.log('  Finishing upload. This could take a couple minutes');

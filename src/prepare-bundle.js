@@ -1,6 +1,7 @@
 import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
+import { round } from 'lodash';
 import { getNodeVersion, logStep } from './utils';
 
 function copy(source, destination, vars = {}) {
@@ -46,7 +47,7 @@ export function injectFiles(api, name, version, yumPackages, bundlePath) {
 
   sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/packages.config');
-  copy(sourcePath, destPath, { packages: yumPackages })
+  copy(sourcePath, destPath, { packages: yumPackages });
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');
   destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');
@@ -89,7 +90,7 @@ export function archiveApp(buildLocation, api) {
         const progress = entries.processed / entries.total;
 
         if (progress > nextProgress) {
-          console.log(`  ${Math.floor(nextProgress * 100)}% Archived`);
+          console.log(`  ${round(Math.floor(nextProgress * 100), -1)}% Archived`);
           nextProgress += 0.1;
         }
       } catch (e) {
