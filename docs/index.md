@@ -7,7 +7,7 @@ Read the [Getting Started tutorial](./getting-started.md).
 - This plugin is configured with the `app` object in your config.
 - `app.type` should be set to `aws-beanstalk` so Meteor Up knows this plugin will deploy and manage the app.
 - You will need to add `mup-aws-beanstalk` to the `plugins` array in your config
-- The `servers` object is needed
+- The `servers` object is not needed
 
 Example config:
 
@@ -29,7 +29,7 @@ module.exports = {
         },
         // (required) Minimum number of servers running your app
         minInstances: 2,
-        // (optional, default is inInstances) Maximum number of servers
+        // (optional, default is minInstances) Maximum number of servers
         // for autoscale to scale up to
         maxInstances: 5
     },
