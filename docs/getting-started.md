@@ -59,7 +59,7 @@ You will need to [create an Amazon account](https://portal.aws.amazon.com/billin
 Next, create an IAM user at [https://console.aws.amazon.com/iam/home?region=us-east-1#/users](https://console.aws.amazon.com/iam/home?region=us-east-1#/users)
 
 The access type should be `Programmatic access`.
-You can select `Add user to group` and create a new group. The group should have the permissions:
+You can select `Add user to group` and create a new group. The group should have the following permissions:
 
 - `AWSElasticBeanstalkFullAccess`
 - `IAMFullAccess` This is used to create the roles and Instance Profiles needed by Elastic Beanstalk. After the first deploy, you can replace it with `IAMReadOnlyAccess`
@@ -75,5 +75,5 @@ Simply run:
 mup deploy
 ```
 
-And it will setup and deploy your app.
+It will setup and deploy your app.
 
