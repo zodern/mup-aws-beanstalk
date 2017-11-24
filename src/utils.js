@@ -4,7 +4,10 @@ import fs from 'fs';
 import random from 'random-seed';
 import os from 'os';
 import uuid from 'uuid';
-import configure from './aws';
+import {
+  iam,
+  beanstalk
+} from './aws';
 
 export function logStep(message) {
   console.log(chalk.blue(message));
@@ -48,9 +51,6 @@ async function retrieveEnvironmentInfo(api, count) {
   const {
     environment
   } = names(config);
-  const {
-    beanstalk
-  } = configure(config.app);
 
   const {
     EnvironmentInfo
@@ -81,9 +81,6 @@ export async function getLogs(api) {
   const {
     environment
   } = names(config);
-  const {
-    beanstalk
-  } = configure(config.app);
 
   logStep('=> Requesting Logs');
 
@@ -102,7 +99,16 @@ export async function getLogs(api) {
     return result;
   }, {});
 
-  return Promise.all(Object.values(logsForServer).map(url => axios.get(url)));
+  return Promise.all(Object.keys(logsForServer).map((key) => {
+    return new Promise((resolve, reject) => {
+      axios.get(logsForServer[key]).then(({ data }) => {
+        resolve({
+          data,
+          instance: key
+        });
+      }).catch(reject);
+    });
+  }));
 }
 
 export function getNodeVersion(api, bundlePath) {
@@ -134,10 +140,6 @@ export function getNodeVersion(api, bundlePath) {
 }
 
 export async function attachPolicies(config, roleName, policies) {
-  const {
-    iam
-  } = configure(config.app);
-
   const promises = [];
 
   policies.forEach((policy) => {
@@ -153,10 +155,6 @@ export async function attachPolicies(config, roleName, policies) {
 }
 
 export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
-  const {
-    iam
-  } = configure(config.app);
-
   let exists = true;
 
   try {
@@ -176,10 +174,6 @@ export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
 }
 
 export async function ensureInstanceProfileExists(config, name) {
-  const {
-    iam
-  } = configure(config.app);
-
   let exists = true;
 
   try {
@@ -198,10 +192,6 @@ export async function ensureInstanceProfileExists(config, name) {
 }
 
 export async function ensureRoleAdded(config, instanceProfile, role) {
-  const {
-    iam
-  } = configure(config.app);
-
   let added = true;
 
 
@@ -224,10 +214,6 @@ export async function ensureRoleAdded(config, instanceProfile, role) {
 }
 
 export async function ensurePoliciesAttached(config, role, policies) {
-  const {
-    iam
-  } = configure(config.app);
-
   let {
     AttachedPolicies
   } = await iam.listAttachedRolePolicies({

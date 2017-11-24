@@ -2,12 +2,11 @@ import {
   logStep,
   names
 } from './utils';
-import configure from './aws';
+import {
+  beanstalk
+} from './aws';
 
 export async function getLastEvent(config) {
-  const {
-    beanstalk
-  } = configure(config.app);
   const {
     environment
   } = names(config);
@@ -23,9 +22,6 @@ export async function getLastEvent(config) {
 }
 
 export async function showEvents(config, lastEventDate) {
-  const {
-    beanstalk
-  } = configure(config.app);
   const {
     environment,
     app
@@ -50,9 +46,6 @@ export async function showEvents(config, lastEventDate) {
 }
 
 async function checker(config, prop, wantedValue, showProgress) {
-  const {
-    beanstalk
-  } = configure(config.app);
   const {
     environment,
     app

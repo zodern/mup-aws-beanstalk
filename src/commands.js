@@ -1,8 +1,22 @@
 import * as commandHandlers from './command-handlers';
+import configure from './aws';
+
+let prepared = false;
+
+function prepare(commandHandler) {
+  return function handler(api) {
+    if (!prepared) {
+      configure(api.getConfig().app);
+      prepared = true;
+    }
+
+    return commandHandler(api);
+  };
+}
 
 export const setup = {
   description: 'Prepare AWS to deploy app',
-  handler: commandHandlers.setup
+  handler: prepare(commandHandlers.setup)
 };
 
 export const deploy = {
@@ -32,47 +46,58 @@ export const logs = {
         boolean: true
       });
   },
-  handler: commandHandlers.logs
+  handler: prepare(commandHandlers.logs)
+};
+
+export const logsNginx = {
+  name: 'logs-nginx',
+  description: 'View Nginx logs',
+  handler: prepare(commandHandlers.logsNginx)
 };
 
 export const logsEb = {
   name: 'logs-eb',
   description: 'Logs from setting up server and installing npm dependencies',
-  handler: commandHandlers.logsEb
+  handler: prepare(commandHandlers.logsEb)
 };
 
 
 export const start = {
   description: 'Start app',
-  handler: commandHandlers.start
+  handler: prepare(commandHandlers.start)
 };
 
 export const stop = {
   description: 'Stop app',
-  handler: commandHandlers.stop
+  handler: prepare(commandHandlers.stop)
 };
 
 export const restart = {
   description: 'Restart app',
-  handler: commandHandlers.restart
+  handler: prepare(commandHandlers.restart)
 };
 
 export const events = {
   description: 'Environment Events',
-  handler: commandHandlers.events
+  handler: prepare(commandHandlers.events)
 };
 
 export const clean = {
   description: 'Remove old bundles and app versions',
-  handler: commandHandlers.clean
+  handler: prepare(commandHandlers.clean)
+};
+
+export const ssl = {
+  description: 'Setup and view status of ssl certificate',
+  handler: prepare(commandHandlers.ssl)
 };
 
 export const reconfig = {
   description: 'Update env variables, instance count, and Meteor settings.json',
-  handler: commandHandlers.reconfig
+  handler: prepare(commandHandlers.reconfig)
 };
 
 export const status = {
   description: 'View status of app',
-  handler: commandHandlers.status
+  handler: prepare(commandHandlers.status)
 };

@@ -1,4 +1,9 @@
-import configure from './aws';
+import {
+  acm,
+  s3,
+  beanstalk,
+  autoScaling
+} from './aws';
 import upload from './upload';
 import {
   archiveApp,
@@ -37,10 +42,6 @@ import {
 export async function setup(api) {
   const config = api.getConfig();
   const appConfig = config.app;
-  const {
-    s3,
-    beanstalk
-  } = configure(appConfig);
 
   const {
     bucket: bucketName,
@@ -108,9 +109,7 @@ export async function deploy(api) {
     bundlePrefix,
     environment
   } = names(config);
-  const {
-    beanstalk
-  } = configure(config.app);
+
 
   const version = await largestVersion(api);
   const nextVersion = version + 1;
@@ -168,36 +167,44 @@ export async function logs(api) {
   const logsContent = await getLogs(api);
 
   logsContent.forEach(({
-    data
+    data,
+    instance
   }) => {
     // console.log(data);
     data = data.split('-------------------------------------\n/var/log/');
+    process.stdout.write(`${instance} `);
     process.stdout.write(data[1]);
   });
 }
 
 export async function logsNginx(api) {
+  const logsContent = await getLogs(api);
 
+  logsContent.forEach(({
+    instance,
+    data
+  }) => {
+    data = data.split('-------------------------------------\n/var/log/');
+    console.log(`${instance} `, data[2]);
+    console.log(`${instance} `, data[4]);
+  });
 }
 
 export async function logsEb(api) {
   const logsContent = await getLogs(api);
 
   logsContent.forEach(({
-    data
+    data,
+    instance
   }) => {
     data = data.split('\n\n\n-------------------------------------\n/var/log/');
-    console.log(data.length);
+    process.stdout.write(`${instance} `);
     process.stdout.write(data[2]);
   });
 }
 
 export async function start(api) {
   const config = api.getConfig();
-  const {
-    beanstalk,
-    autoScaling
-  } = await configure(config.app);
   const {
     environment
   } = names(config);
@@ -230,10 +237,6 @@ export async function start(api) {
 export async function stop(api) {
   const config = api.getConfig();
   const {
-    beanstalk,
-    autoScaling
-  } = await configure(config.app);
-  const {
     environment
   } = names(config);
 
@@ -260,9 +263,6 @@ export async function stop(api) {
 export async function restart(api) {
   const config = api.getConfig();
   const {
-    beanstalk
-  } = await configure(config.app);
-  const {
     environment
   } = names(config);
 
@@ -280,9 +280,6 @@ export async function clean(api) {
   const {
     app
   } = names(config);
-  const {
-    beanstalk
-  } = configure(config.app);
 
   logStep('=> Finding old versions');
   const {
@@ -307,9 +304,6 @@ export async function clean(api) {
 
 export async function reconfig(api) {
   const config = api.getConfig();
-  const {
-    beanstalk
-  } = configure(config.app);
 
   const {
     app,
@@ -366,22 +360,19 @@ export async function reconfig(api) {
     console.log('  Updated Environment');
 
     if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
-  await waitForEnvReady(config, true);
+      await waitForEnvReady(config, true);
 
       logStep('=> Configuring scaling');
       await beanstalk.updateEnvironment({
         EnvironmentName: environment,
         OptionSettings: scalingConfig(config.app).OptionSettings
       }).promise();
-}
+    }
   }
   await waitForEnvReady(config, true);
 }
 
 export async function events(api) {
-  const {
-    beanstalk
-  } = configure(api.getConfig().app);
   const {
     environment
   } = names(api.getConfig());
@@ -396,9 +387,6 @@ export async function events(api) {
 }
 
 export async function status(api) {
-  const {
-    beanstalk
-  } = configure(api.getConfig().app);
   const {
     environment
   } = names(api.getConfig());
@@ -459,5 +447,28 @@ export async function status(api) {
   });
   if (InstanceHealthList.length === 0) {
     console.log('  0 Instances');
+  }
+}
+
+export async function ssl(api) {
+  const config = api.getConfig();
+
+  if (!config.app || !config.app.sslDomains) {
+    console.log('"app.sslDomains" is not in the mup config');
+    return;
+  }
+
+  const domains = config.app.sslDomains;
+
+  const { CertificateSummaryList } = await acm.listCertificates().promise();
+
+  // TODO: check if certificate for domains already exists
+  const found = CertificateSummaryList.find(() => false);
+
+  if (!found) {
+    await acm.requestCertificate({
+      DomainName: domains.shift(),
+      SubjectAlternativeNames: domains.length > 0 ? domains : null
+    }).promise();
   }
 }

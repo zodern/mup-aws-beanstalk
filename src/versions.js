@@ -1,7 +1,10 @@
 import {
   difference
 } from 'lodash';
-import configure from './aws';
+import {
+  beanstalk,
+  s3
+} from './aws';
 import {
   names
 } from './utils';
@@ -9,10 +12,6 @@ import {
 export async function ebVersions(api) {
   const config = api.getConfig();
   const versions = [0];
-
-  const {
-    beanstalk
-  } = configure(config.app);
   const {
     app
   } = names(config);
@@ -22,7 +21,6 @@ export async function ebVersions(api) {
   }).promise();
 
   if (appVersions.ApplicationVersions.length > 0) {
-    // TODO: check for largest version number
     appVersions.ApplicationVersions.forEach(({
       VersionLabel
     }) => {
@@ -38,9 +36,6 @@ export async function ebVersions(api) {
 export async function s3Versions(api) {
   const config = api.getConfig();
   const versions = [0];
-  const {
-    s3
-  } = configure(config.app);
   const {
     bucket,
     bundlePrefix
@@ -82,7 +77,6 @@ export async function oldVersions(api) {
   const oldBundleVersions = difference(bundleVersions, appVersions);
 
   // keep the 3 newest versions
-  // TODO: make sure the currently deployed version isn't an older one
   const oldAppVersions = appVersions.slice(3);
   return {
     bundles: oldBundleVersions,

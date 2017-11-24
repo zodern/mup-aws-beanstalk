@@ -1,9 +1,9 @@
 import fs from 'fs';
-import client from './aws';
+import {
+  s3
+} from './aws';
 
 export default function upload(appConfig, bucket, key, bundlePath) {
-  const { s3 } = client(appConfig);
-
   const params = { Bucket: bucket };
   const fileStream = fs.createReadStream(bundlePath);
   fileStream.on('error', (err) => {

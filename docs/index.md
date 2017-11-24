@@ -104,6 +104,7 @@ module.exports = {
 - `mup setup` Sets up AWS Beanstalk in preperation to deploy. Automatically run by `mup deploy`
 - `mup reconfig` Update Meteor settings and the Beanstalk config. Automatically run by `mup deploy`
 - `mup logs` View last 100 lines of the app's logs
+- `mup logs-nginx` View nginx logs
 - `mup beanstalk logs-eb` View last 100 lines of the logs from Beanstalk setting up the server and the app
 - `mup stop` Scales the app to 0 instances
 - `mup start` Scales the app back up after being stopped
