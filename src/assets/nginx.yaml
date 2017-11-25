@@ -30,6 +30,11 @@ files:
 
             access_log /var/log/nginx/healthd/application.log.$year-$month-$day-$hour healthd;
             access_log  /var/log/nginx/access.log  main;
+            <% if(forceSSL) { %>
+            if ($http_x_forwarded_proto = "http") {
+              return 301 https://$host$request_uri;
+            }
+            <% } %>
 
             location ~* \.(eot|ttf|woff)$ {
               root /var/app/current/programs/web.browser/app;

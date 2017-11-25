@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import {
   acm,
   s3,
@@ -38,6 +39,8 @@ import {
   waitForEnvReady,
   waitForHealth
 } from './env-ready';
+
+import updateSSLConfig from './certificates';
 
 export async function setup(api) {
   const config = api.getConfig();
@@ -128,6 +131,7 @@ export async function deploy(api) {
       app,
       nextVersion,
       config.app.yumPackages || {},
+      config.app.forceSSL,
       config.app.buildOptions.buildLocation
     );
     await archiveApp(config.app.buildOptions.buildLocation, api);
@@ -161,6 +165,8 @@ export async function deploy(api) {
 
   await waitForEnvReady(config, true);
   await api.runCommand('beanstalk.clean');
+
+  await api.runCommand('beanstalk.ssl');
 }
 
 export async function logs(api) {
@@ -304,7 +310,6 @@ export async function clean(api) {
 
 export async function reconfig(api) {
   const config = api.getConfig();
-
   const {
     app,
     environment
@@ -454,21 +459,95 @@ export async function ssl(api) {
   const config = api.getConfig();
 
   if (!config.app || !config.app.sslDomains) {
-    console.log('"app.sslDomains" is not in the mup config');
+    logStep('=> Updating Beanstalk SSL Config');
+    await updateSSLConfig(config);
     return;
   }
 
+  logStep('=> Checking Certificate Status');
+
   const domains = config.app.sslDomains;
-
   const { CertificateSummaryList } = await acm.listCertificates().promise();
+  let found = null;
 
-  // TODO: check if certificate for domains already exists
-  const found = CertificateSummaryList.find(() => false);
+  for (let i = 0; i < CertificateSummaryList.length; i++) {
+    const { DomainName, CertificateArn } = CertificateSummaryList[i];
+
+    if (DomainName === domains[0]) {
+      // eslint-disable-next-line no-await-in-loop
+      const { Certificate } = await acm.describeCertificate({
+        CertificateArn
+      }).promise();
+
+      if (domains.join(',') === Certificate.SubjectAlternativeNames.join(',')) {
+        found = CertificateSummaryList[i];
+      }
+    }
+  }
+
+  let certificateArn;
 
   if (!found) {
-    await acm.requestCertificate({
+    logStep('=> Requesting Certificate');
+
+    const result = await acm.requestCertificate({
       DomainName: domains.shift(),
       SubjectAlternativeNames: domains.length > 0 ? domains : null
     }).promise();
+
+    certificateArn = result.CertificateArn;
+  }
+
+  if (found) {
+    certificateArn = found.CertificateArn;
+  }
+
+  let emailsProvided = false;
+  let checks = 0;
+  let certificate;
+
+  /* eslint-disable no-await-in-loop */
+  while (!emailsProvided && checks < 5) {
+    const { Certificate } = await acm.describeCertificate({
+      CertificateArn: certificateArn
+    }).promise();
+
+    if (Certificate.DomainValidationOptions[0].ValidationEmails.length > 0 || checks === 6) {
+      emailsProvided = true;
+      certificate = Certificate;
+    } else {
+      checks += 1;
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1000 * 10);
+      });
+    }
+  }
+
+  if (certificate.Status === 'PENDING_VALIDATION') {
+    console.log('Certificate is pending validation.');
+    certificate.DomainValidationOptions.forEach(({
+      ValidationEmails,
+      ValidationDomain,
+      ValidationStatus
+    }) => {
+      if (ValidationStatus === 'SUCCESS') {
+        console.log(chalk.green(`${ValidationDomain} has been verified`));
+        return;
+      }
+
+      console.log(chalk.yellow(`${ValidationDomain} is pending validation`));
+      console.log('Emails with instructions have been sent to:');
+
+      ValidationEmails.forEach((email) => {
+        console.log(`  ${email}`);
+      });
+
+      console.log('Run "mup beanstalk ssl" after you have verified the domains, or to check the verification status');
+    });
+  } else if (certificate.Status === 'ISSUED') {
+    console.log(chalk.green('Certificate has been issued'));
+    logStep('=> Updating Beanstalk SSL Config');
+    await updateSSLConfig(config, certificateArn);
   }
 }

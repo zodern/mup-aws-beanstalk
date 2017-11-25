@@ -21,6 +21,7 @@ const schema = joi.object().keys({
     secret: joi.string().required()
   }).required(),
   sslDomains: joi.array().items(joi.string()),
+  forceSSL: joi.bool(),
   region: joi.string(),
   minInstances: joi.number().min(1).required(),
   maxInstances: joi.number().min(1),

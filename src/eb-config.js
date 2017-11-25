@@ -144,13 +144,13 @@ export function scalingConfig({ minInstances, maxInstances }) {
   };
 }
 
+export function convertToObject(result, option) {
+  result[`${option.Namespace}-${option.OptionName}`] = option;
+
+  return result;
+}
+
 export function diffConfig(current, desired) {
-  function convertToObject(result, option) {
-    result[`${option.Namespace}-${option.OptionName}`] = option;
-
-    return result;
-  }
-
   current = current.reduce(convertToObject, {});
 
   desired = desired.reduce(convertToObject, {});

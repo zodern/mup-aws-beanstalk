@@ -161,6 +161,37 @@ The log commands shows the last 100 lines. You can download a zip file with all 
 
 This plugin supports meteor 1.2 or newer. It will automatically use the correct Node and npm version.
 
+## SSL
+
+This plugin can request a certificate for you using the [Amazon Certificate Manager (ACM)](https://aws.amazon.com/certificate-manager/).
+
+In your config, add:
+
+```js
+module.exports = {
+    app: {
+        // ... rest of config
+
+        sslDomains: [
+            'website.com',
+            'www.website.com',
+            'website.net'
+        ],
+        forceSSL: true
+    }
+};
+```
+
+Then run `mup deploy` or `mup beanstalk ssl`.
+
+The command will show a list of emails that ACM sent an email to with instructions on verifying the domain name. The list includes your domain's registrant and administrative and technical contact, as well as a few common addresses.
+
+After you have followed the instructions in the email, run `mup beanstalk ssl` to configure Beanstalk to use the certificate.
+
+You can run `mup beanstalk ssl` to also view the certificate's status.
+
+ACM automatically renews the certificates.
+
 ## Troubleshooting
 
 - View the logs with `mup logs` or from the AWS Console
