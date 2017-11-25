@@ -67,6 +67,9 @@ module.exports = {
         // (optional) Array of domains to request an ssl certificate for
         sslDomains: ['app.com', 'www.app.com'],
 
+        // (optional) Redirect http to https
+        forceSSL: true,
+
         // (optional, default is us-east-1) AWS region to deploy to
         region: 'us-west-1',
 
@@ -97,6 +100,8 @@ module.exports = {
     plugins: ['mup-aws-beanstalk']
 }
 ```
+
+Changes to `yumPackages`, `forceSSL` and `buildOptions` requires deploying a new version to take affect.
 
 ## Commands
 
@@ -172,11 +177,14 @@ module.exports = {
     app: {
         // ... rest of config
 
+        // Enables SSL. Array of domain names to create the certificate for.
         sslDomains: [
             'website.com',
             'www.website.com',
             'website.net'
         ],
+
+        // (optional) Redirect http to https
         forceSSL: true
     }
 };
@@ -184,11 +192,11 @@ module.exports = {
 
 Then run `mup deploy` or `mup beanstalk ssl`.
 
-The command will show a list of emails that ACM sent an email to with instructions on verifying the domain name. The list includes your domain's registrant and administrative and technical contact, as well as a few common addresses.
+The command will show a list of email addresses that ACM sent an email to with instructions on verifying the domain name. The list includes your domain's registrant, and administrative and technical contact, as well as a few common addresses.
 
 After you have followed the instructions in the email, run `mup beanstalk ssl` to configure Beanstalk to use the certificate.
 
-You can run `mup beanstalk ssl` to also view the certificate's status.
+You can also run `mup beanstalk ssl` to view the certificate's status.
 
 ACM automatically renews the certificates.
 
