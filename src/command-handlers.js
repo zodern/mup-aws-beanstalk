@@ -164,6 +164,16 @@ export async function deploy(api) {
   }).promise();
 
   await waitForEnvReady(config, true);
+
+  const {
+    Environments
+  } = await beanstalk.describeEnvironments({
+    ApplicationName: app,
+    EnvironmentNames: [environment]
+  }).promise();
+
+  console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
+
   await api.runCommand('beanstalk.clean');
 
   await api.runCommand('beanstalk.ssl');
@@ -335,7 +345,6 @@ export async function reconfig(api) {
     await beanstalk.createEnvironment({
       ApplicationName: app,
       EnvironmentName: environment,
-      CNAMEPrefix: config.app.name,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
       SolutionStackName: solutionStack,
