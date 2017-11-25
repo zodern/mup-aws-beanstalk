@@ -45,9 +45,11 @@ export function injectFiles(api, name, version, yumPackages, forceSSL, bundlePat
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
   copy(sourcePath, destPath, { forceSSL });
 
-  sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');
-  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/packages.config');
-  copy(sourcePath, destPath, { packages: yumPackages });
+  if (yumPackages) {
+    sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');
+    destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/packages.config');
+    copy(sourcePath, destPath, { packages: yumPackages });
+  }
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');
   destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');

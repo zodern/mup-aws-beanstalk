@@ -130,7 +130,7 @@ export async function deploy(api) {
       api,
       app,
       nextVersion,
-      config.app.yumPackages || {},
+      config.app.yumPackages,
       config.app.forceSSL,
       config.app.buildOptions.buildLocation
     );
