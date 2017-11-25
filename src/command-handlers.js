@@ -328,6 +328,9 @@ export async function reconfig(api) {
   const desiredEbConfig = createDesiredConfig(api.getConfig(), '', api);
 
   if (!Environments.find(env => env.Status !== 'Terminated')) {
+    const { SolutionStacks } = await beanstalk.listAvailableSolutionStacks().promise();
+    const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
+
     const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
       ApplicationName: app,
@@ -335,7 +338,7 @@ export async function reconfig(api) {
       CNAMEPrefix: config.app.name,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
-      SolutionStackName: '64bit Amazon Linux 2017.03 v4.3.0 running Node.js',
+      SolutionStackName: solutionStack,
       OptionSettings: desiredEbConfig.OptionSettings
     }).promise();
 
