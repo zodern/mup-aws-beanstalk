@@ -133,6 +133,8 @@ When deploying a new version, there is no downtime, and the number of servers ha
 
 Beanstalk is configured to use Rolling updates with additional batch with a batch size of 25%. This means that Beanstalk first creates an additional 25% instances and deploys the new version of the app to them. After the app has started, it will update the remaining servers in batches of 25%, except for the last 25%, which it terminates.
 
+This does not apply when changing the instance type. Instead, Beanstalk terminates the instances and replaces them in batches of 1/3 (rounded to the nearest integer). If you only have one server, there will be downtime until the app is running on the new server. Before changing `instanceType`, increase `minInstances` to at least 2 and run `mup reconfig` to avoid downtime.
+
 ## Load balancing
 
 Load balancing is automatically configured and supports web sockets and sticky sessions.

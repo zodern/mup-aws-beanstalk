@@ -77,6 +77,14 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       OptionName: 'BatchSize',
       Value: '30'
     }, {
+      Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
+      OptionName: 'RollingUpdateEnabled',
+      Value: 'true'
+    }, {
+      Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
+      OptionName: 'RollingUpdateType',
+      Value: 'Health'
+    }, {
       Namespace: 'aws:elasticbeanstalk:environment',
       OptionName: 'ServiceRole',
       Value: serviceRole
