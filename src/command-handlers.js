@@ -352,8 +352,8 @@ export async function reconfig(api) {
     }).promise();
 
     console.log(' Created Environment');
-  } else {
     await waitForEnvReady(config, false);
+  } else {
     const {
       ConfigurationSettings
     } = await beanstalk.describeConfigurationSettings({
@@ -361,32 +361,39 @@ export async function reconfig(api) {
       ApplicationName: app
     }).promise();
     const {
-      toRemove
+      toRemove,
+      toUpdate
     } = diffConfig(
       ConfigurationSettings[0].OptionSettings,
       desiredEbConfig.OptionSettings
     );
 
-    // TODO: only update diff, and remove extra items
+    if (toRemove.length > 0 || toUpdate.length > 0) {
     await beanstalk.updateEnvironment({
       EnvironmentName: environment,
-      OptionSettings: desiredEbConfig.OptionSettings,
+        OptionSettings: toUpdate,
       OptionsToRemove: toRemove
     }).promise();
+      console.log('  Updated Environment');
+      await waitForEnvReady(config, true);
+    }
+  }
 
-    console.log('  Updated Environment');
+  const {
+    ConfigurationSettings
+  } = await beanstalk.describeConfigurationSettings({
+    EnvironmentName: environment,
+    ApplicationName: app
+  }).promise();
 
     if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
-      await waitForEnvReady(config, true);
-
       logStep('=> Configuring scaling');
       await beanstalk.updateEnvironment({
         EnvironmentName: environment,
         OptionSettings: scalingConfig(config.app).OptionSettings
       }).promise();
-    }
+    await waitForEnvReady(config, true);
   }
-  await waitForEnvReady(config, true);
 }
 
 export async function events(api) {

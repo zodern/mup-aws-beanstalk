@@ -81,7 +81,7 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       OptionName: 'ServiceRole',
       Value: serviceRole
     }, {
-      Namespace: 'aws:elasticbeanstalk:healthreporting:system:',
+      Namespace: 'aws:elasticbeanstalk:healthreporting:system',
       OptionName: 'SystemType',
       Value: 'enhanced'
     }]
@@ -165,7 +165,16 @@ export function diffConfig(current, desired) {
       };
     });
 
+  const toUpdate = Object.keys(desired).filter((key) => {
+    if (key in current && current[key].Value === desired[key].Value) {
+      return false;
+    }
+
+    return true;
+  }).map(key => desired[key]);
+
   return {
-    toRemove
+    toRemove,
+    toUpdate
   };
 }
