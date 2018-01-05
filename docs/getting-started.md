@@ -32,7 +32,7 @@ module.exports = {
         name: 'myApp',
         path: '../',
         env: {
-            ROOt_URL: 'http://app.com',
+            ROOT_URL: 'http://app.com',
             MONGO_URL: 'mongodb://user:pass@domain.com'
         },
         auth: {
