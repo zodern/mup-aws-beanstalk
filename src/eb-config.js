@@ -37,10 +37,6 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       OptionName: 'LowerThreshold',
       Value: '35'
     }, {
-      Namespace: 'aws:elasticbeanstalk:container:nodejs',
-      OptionName: 'NodeVersion',
-      Value: '8.4.0'
-    }, {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'InstanceType',
       Value: instanceType
