@@ -7,7 +7,7 @@ const schema = joi.object().keys({
   buildOptions: joi.object().keys({
     serverOnly: joi.bool(),
     debug: joi.bool(),
-    buildLocation: joi.bool(),
+    buildLocation: joi.string(),
     mobileSettings: joi.object(),
     server: joi.string().uri(),
     allowIncompatibleUpdates: joi.boolean(),

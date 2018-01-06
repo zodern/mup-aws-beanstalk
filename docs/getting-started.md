@@ -36,8 +36,8 @@ module.exports = {
             MONGO_URL: 'mongodb://user:pass@domain.com'
         },
         auth: {
-            id: '',
-            secret: ''
+            id: '12345',
+            secret: '6789'
         },
         minInstances: 1
     },

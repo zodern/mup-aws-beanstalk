@@ -17,11 +17,12 @@ module.exports = {
         type: 'aws-beanstalk',
         // Must be at least 4 characters
         name: 'app-name',
+        path: '../',
         auth: {
             // IAM user's Access key ID
-            id: '',
+            id: '12345',
             // IAM user's Secret access key
-            secret: ''
+            secret: '6789'
         },
         env: {
             ROOT_URL: 'http://website.com',
@@ -44,11 +45,12 @@ module.exports = {
         type: 'aws-beanstalk',
         // Must be at least 4 characters
         name: 'app-name',
+        path: '../',
         auth: {
             // IAM user's Access key ID
-            id: '',
+            id: '12345',
             // IAM user's Secret access key
-            secret: ''
+            secret: '6789'
         },
         env: {
             ROOT_URL: 'http://website.com',
@@ -82,7 +84,7 @@ module.exports = {
             'pango': '',
             'pango-devel': '',
             'giflib-devel': ''
-        }
+        },
 
         // (optional) Same options as when deploying with mup. 
         // The one difference is serverOnly now defaults to true

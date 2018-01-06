@@ -99,16 +99,15 @@ export async function getLogs(api) {
     return result;
   }, {});
 
-  return Promise.all(Object.keys(logsForServer).map((key) => {
-    return new Promise((resolve, reject) => {
+  return Promise.all(Object.keys(logsForServer).map(key =>
+    new Promise((resolve, reject) => {
       axios.get(logsForServer[key]).then(({ data }) => {
         resolve({
           data,
           instance: key
         });
       }).catch(reject);
-    });
-  }));
+    })));
 }
 
 export function getNodeVersion(api, bundlePath) {

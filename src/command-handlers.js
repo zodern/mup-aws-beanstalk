@@ -369,11 +369,11 @@ export async function reconfig(api) {
     );
 
     if (toRemove.length > 0 || toUpdate.length > 0) {
-    await beanstalk.updateEnvironment({
-      EnvironmentName: environment,
+      await beanstalk.updateEnvironment({
+        EnvironmentName: environment,
         OptionSettings: toUpdate,
-      OptionsToRemove: toRemove
-    }).promise();
+        OptionsToRemove: toRemove
+      }).promise();
       console.log('  Updated Environment');
       await waitForEnvReady(config, true);
     }
@@ -386,12 +386,12 @@ export async function reconfig(api) {
     ApplicationName: app
   }).promise();
 
-    if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
-      logStep('=> Configuring scaling');
-      await beanstalk.updateEnvironment({
-        EnvironmentName: environment,
-        OptionSettings: scalingConfig(config.app).OptionSettings
-      }).promise();
+  if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
+    logStep('=> Configuring scaling');
+    await beanstalk.updateEnvironment({
+      EnvironmentName: environment,
+      OptionSettings: scalingConfig(config.app).OptionSettings
+    }).promise();
     await waitForEnvReady(config, true);
   }
 }
