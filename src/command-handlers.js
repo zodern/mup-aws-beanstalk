@@ -32,7 +32,8 @@ import {
   createDesiredConfig,
   diffConfig,
   scalingConfig,
-  scalingConfigChanged
+  scalingConfigChanged,
+  mergeConfigs
 } from './eb-config';
 
 import {
@@ -336,6 +337,13 @@ export async function reconfig(api) {
   }).promise();
 
   const desiredEbConfig = createDesiredConfig(api.getConfig(), '', api);
+  const customEbConfig = (config.app.customBeanstalkConfig || []).map(option => ({
+    Namespace: option.namespace,
+    OptionName: option.option,
+    Value: option.value
+  }));
+
+  desiredEbConfig.OptionSettings = mergeConfigs(desiredEbConfig.OptionSettings, customEbConfig);
 
   if (!Environments.find(env => env.Status !== 'Terminated')) {
     const { SolutionStacks } = await beanstalk.listAvailableSolutionStacks().promise();

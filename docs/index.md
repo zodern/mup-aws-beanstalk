@@ -86,7 +86,7 @@ module.exports = {
             'giflib-devel': ''
         },
 
-        // (optional) Same options as when deploying with mup. 
+        // (optional) Same options as when deploying with mup.
         // The one difference is serverOnly now defaults to true
         buildOptions: {
             // Default is true
@@ -97,7 +97,18 @@ module.exports = {
             server: 'http://app.com',
             allowIncompatibleUpdates: true,
             executable: 'meteor'
-        }
+        },
+
+        // (optional) Override or add options in the beanstalk config
+        // this plugin creates.You can customize any option on:
+        // https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/command-options-general.html
+        customBeanstalkConfig: [
+            {
+                namespace: 'aws:autoscaling:asg',
+                option: 'Cooldown',
+                value: '300'
+            }
+        ]
     },
     plugins: ['mup-aws-beanstalk']
 }

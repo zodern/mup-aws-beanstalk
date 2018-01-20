@@ -29,7 +29,12 @@ const schema = joi.object().keys({
   yumPackages: joi.object().pattern(
     /[/s/S]*/,
     [joi.string().allow('')]
-  )
+  ),
+  customBeanstalkConfig: joi.array().items(joi.object({
+    namespace: joi.string().trim().required(),
+    option: joi.string().trim().required(),
+    value: joi.string().trim().required()
+  }))
 });
 
 export default function (config, utils) {

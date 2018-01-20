@@ -154,6 +154,17 @@ export function convertToObject(result, option) {
   return result;
 }
 
+export function mergeConfigs(config1, config2) {
+  config1 = config1.reduce(convertToObject, {});
+
+  config2.forEach((option) => {
+    const key = [`${option.Namespace}-${option.OptionName}`];
+    config1[key] = option;
+  });
+
+  return Object.values(config1);
+}
+
 export function diffConfig(current, desired) {
   current = current.reduce(convertToObject, {});
 
