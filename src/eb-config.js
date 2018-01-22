@@ -88,6 +88,10 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       Namespace: 'aws:elasticbeanstalk:healthreporting:system',
       OptionName: 'SystemType',
       Value: 'enhanced'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment:process:default',
+      OptionName: 'StickinessEnabled',
+      Value: 'true'
     }]
   };
 
