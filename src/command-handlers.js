@@ -538,8 +538,12 @@ export async function ssl(api) {
     const { Certificate } = await acm.describeCertificate({
       CertificateArn: certificateArn
     }).promise();
+    const validationOptions = Certificate.DomainValidationOptions[0];
 
-    if (Certificate.DomainValidationOptions[0].ValidationEmails.length > 0 || checks === 6) {
+    if (typeof validationOptions.ValidationEmails === 'undefined') {
+      emailsProvided = true;
+      certificate = Certificate;
+    } else if (validationOptions.ValidationEmails.length > 0 || checks === 6) {
       emailsProvided = true;
       certificate = Certificate;
     } else {
@@ -554,21 +558,25 @@ export async function ssl(api) {
   if (certificate.Status === 'PENDING_VALIDATION') {
     console.log('Certificate is pending validation.');
     certificate.DomainValidationOptions.forEach(({
+      DomainName,
       ValidationEmails,
       ValidationDomain,
       ValidationStatus
     }) => {
       if (ValidationStatus === 'SUCCESS') {
-        console.log(chalk.green(`${ValidationDomain} has been verified`));
+        console.log(chalk.green(`${ValidationDomain || DomainName} has been verified`));
         return;
       }
 
-      console.log(chalk.yellow(`${ValidationDomain} is pending validation`));
-      console.log('Emails with instructions have been sent to:');
+      console.log(chalk.yellow(`${ValidationDomain || DomainName} is pending validation`));
 
-      ValidationEmails.forEach((email) => {
-        console.log(`  ${email}`);
-      });
+      if (ValidationEmails) {
+        console.log('Emails with instructions have been sent to:');
+
+        ValidationEmails.forEach((email) => {
+          console.log(`  ${email}`);
+        });
+      }
 
       console.log('Run "mup beanstalk ssl" after you have verified the domains, or to check the verification status');
     });
