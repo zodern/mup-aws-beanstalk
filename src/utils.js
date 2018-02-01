@@ -74,7 +74,7 @@ async function retrieveEnvironmentInfo(api, count) {
       retrieveEnvironmentInfo(api, count + 1)
         .then(resolve)
         .catch(reject);
-    }, 2000);
+    }, 4000);
   });
 }
 

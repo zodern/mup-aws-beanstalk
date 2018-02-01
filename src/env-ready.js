@@ -91,7 +91,7 @@ async function checker(config, prop, wantedValue, showProgress) {
         }
       }
 
-      setTimeout(check, 2000);
+      setTimeout(check, 5000);
     }
 
     check();
