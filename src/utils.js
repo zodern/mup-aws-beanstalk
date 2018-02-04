@@ -9,6 +9,10 @@ import {
   beanstalk
 } from './aws';
 
+import {
+  getRecheckInterval
+} from './recheck';
+
 export function logStep(message) {
   console.log(chalk.blue(message));
 }
@@ -74,7 +78,7 @@ async function retrieveEnvironmentInfo(api, count) {
       retrieveEnvironmentInfo(api, count + 1)
         .then(resolve)
         .catch(reject);
-    }, 4000);
+    }, getRecheckInterval());
   });
 }
 
