@@ -5,6 +5,11 @@ import {
 import {
   beanstalk
 } from './aws';
+import {
+  getRecheckInterval,
+  checkForThrottlingException,
+  handleThrottlingException
+} from './recheck';
 
 export async function getLastEvent(config) {
   const {
@@ -67,7 +72,12 @@ async function checker(config, prop, wantedValue, showProgress) {
           ApplicationName: app
         }).promise();
       } catch (e) {
-        console.log(e);
+        console.log('in check exception');
+        if (checkForThrottlingException(e)) {
+          handleThrottlingException();
+        } else {
+          console.log(e);
+        }
         reject(e);
       }
       const value = result.Environments[0][prop];
@@ -87,11 +97,15 @@ async function checker(config, prop, wantedValue, showProgress) {
         try {
           lastEventDate = await showEvents(config, lastEventDate);
         } catch (e) {
-          console.log(e);
+          if (checkForThrottlingException(e)) {
+            handleThrottlingException();
+          } else {
+            console.log(e);
+          }
         }
       }
 
-      setTimeout(check, 5000);
+      setTimeout(check, getRecheckInterval());
     }
 
     check();
