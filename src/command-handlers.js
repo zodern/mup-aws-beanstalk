@@ -63,7 +63,12 @@ export async function setup(api) {
 
   if (!Buckets.find(bucket => bucket.Name === bucketName)) {
     await s3.createBucket({
-      Bucket: bucketName
+      Bucket: bucketName,
+      ...(config.app.region ? {
+        CreateBucketConfiguration: {
+          LocationConstraint: config.app.region
+        }
+      } : {})
     }).promise();
     console.log('  Created Bucket');
   }
