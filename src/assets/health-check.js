@@ -15,19 +15,28 @@
 
 var http = require('http');
 
-var log = function log(message) {
-  console.log('[HealthCheck] ' + message);
+var debugEnabled = process.env.HEALTH_CHECK_VERBOSE === 'true';
+
+var log = function log(message, debug) {
+  if (!debug || debugEnabled) {
+    console.log('[HealthCheck] ' + new Date() + ': ' + message);
+  }
 };
 
 
 var server = http.createServer(function (request, response) {
   var timeout;
+  var appRequest;
 
-  var appRequest = http.get('http://127.0.0.1:8081', function () {
+  log('Received health check request', true);
+
+  appRequest = http.get('http://127.0.0.1:8081', function () {
+    log('Health check succeeded', true);
     response.statusCode = 200;
     response.end('Success');
     clearTimeout(timeout);
-  }).on('error', function () {
+  }).on('error', function (e) {
+    log('Request to app failed ' + e);
     response.statusCode = 500;
     response.end('Failed');
     clearTimeout(timeout);
@@ -42,6 +51,7 @@ var server = http.createServer(function (request, response) {
 
 try {
   server.listen(8039);
+  log('Started health check server', true);
 } catch (e) {
   // Port is being used, likely from another health-check server running
   log('Port being used');
