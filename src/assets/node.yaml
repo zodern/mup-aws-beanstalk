@@ -53,7 +53,3 @@ files:
             EOF'
 
             sudo /bin/bash -c 'fc-cache -f -v'
-
-# container_commands:
-#     copy_fonts:
-#         command: "cp fonts/*.ttf /usr/share/fonts/"
