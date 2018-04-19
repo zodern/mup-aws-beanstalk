@@ -32,7 +32,7 @@ files:
             access_log /var/log/nginx/access.log main;
 
             <% if(forceSSL) { %>
-            if ($http_x_forwarded_proto != "https") {
+            if ($http_x_forwarded_proto = "http") {
               return 301 https://$host$request_uri;
             }
             <% } %>
