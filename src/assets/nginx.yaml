@@ -15,11 +15,19 @@ files:
 
           upstream healthcheck {
             server 127.0.0.1:8039;
+            server 127.0.0.1:8049 backup;
             keepalive 256;
           }
 
           server {
             listen 8080;
+            server_tokens off;
+
+            # for the DNS-resolver the AWS-default DNS-server is used, which always has the IP-address x.x.x.2
+            <% if(dnsServers) { %>
+            resolver <%= dnsServers %> valid=300s;
+            <% } %>
+            resolver_timeout 5s;
 
             if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})T(\d{2})") {
               set $year $1;
@@ -32,7 +40,7 @@ files:
             access_log /var/log/nginx/access.log main;
 
             <% if(forceSSL) { %>
-            if ($http_x_forwarded_proto != "https") {
+            if ($http_x_forwarded_proto = "http") {
               return 301 https://$host$request_uri;
             }
             <% } %>
@@ -58,7 +66,13 @@ files:
               proxy_set_header Connection "upgrade";
 
               <% if(forceSSL) { %>
-              add_header Strict-Transport-Security "max-age=31536000; includeSubDomains;";
+              # secure settings used from https://cipherli.st
+              add_header Strict-Transport-Security "<%- httpHeaders.strictTransportSecurity %>";
+              add_header X-Frame-Options <%- httpHeaders.xFrameOptions %>;
+              add_header X-Content-Type-Options <%= httpHeaders.xContentTypeOptions %>;
+              add_header X-XSS-Protection "<%- httpHeaders.xXssProtection %>";
+              add_header X-Robots-Tag <%= httpHeaders.xRobotsTag %>;
+              add_header Content-Security-Policy "<%- httpHeaders.contentSecurityPolicy %>";
               <% } %>
             }
 

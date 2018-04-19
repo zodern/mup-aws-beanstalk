@@ -12,7 +12,14 @@ function copy(source, destination, vars = {}) {
   fs.writeFileSync(destination, contents);
 }
 
-export function injectFiles(api, name, version, yumPackages, forceSSL, bundlePath) {
+export function injectFiles(api, name, version, configOptions, bundlePath) {
+  const {
+    yumPackages,
+    forceSSL,
+    dnsServers,
+    httpHeaders
+  } = (configOptions || { });
+
   let sourcePath = api.resolvePath(__dirname, './assets/package.json');
   let destPath = api.resolvePath(bundlePath, 'bundle/package.json');
   copy(sourcePath, destPath, {
@@ -43,7 +50,7 @@ export function injectFiles(api, name, version, yumPackages, forceSSL, bundlePat
 
   sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
-  copy(sourcePath, destPath, { forceSSL });
+  copy(sourcePath, destPath, { forceSSL, dnsServers, httpHeaders });
 
   if (yumPackages) {
     sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');

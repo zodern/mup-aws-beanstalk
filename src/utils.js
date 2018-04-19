@@ -6,7 +6,8 @@ import os from 'os';
 import uuid from 'uuid';
 import {
   iam,
-  beanstalk
+  beanstalk,
+  ec2
 } from './aws';
 
 import {
@@ -15,6 +16,41 @@ import {
 
 export function logStep(message) {
   console.log(chalk.blue(message));
+}
+
+export function getHttpHeaders(config) {
+  const httpHeaders = {
+    strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload',
+    xFrameOptions: 'DENY',
+    xContentTypeOptions: 'nosniff',
+    xXssProtection: '1; mode=block',
+    xRobotsTag: 'none',
+    contentSecurityPolicy: 'default-src \'self\' \'unsafe-inline\' https: wss:;'
+  };
+
+  if (config.httpHeaders) {
+    Object.keys(config.httpHeaders).forEach((httpHeaderKey) => {
+      httpHeaders[httpHeaderKey] = config.httpHeaders[httpHeaderKey];
+    });
+  }
+
+  return httpHeaders;
+}
+
+export async function getDefaultVpcDns() {
+  const filters = {
+    Filters: [
+      { Name: 'isDefault', Values: ['true'] },
+      { Name: 'state', Values: ['available'] }
+    ]
+  };
+
+  const vpcs = await ec2.describeVpcs(filters).promise();
+
+  if (vpcs && vpcs.Vpcs && vpcs.Vpcs[0]) {
+    // AWS default DNS-server is always the second usable IP-address of the VPC
+    return (`${vpcs.Vpcs[0].CidrBlock.match(/^\d{0,3}\.\d{0,3}.\d{0,3}\./)}2`);
+  }
 }
 
 export function shouldRebuild(bundlePath, useCachedBuild) {

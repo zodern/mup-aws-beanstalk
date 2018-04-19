@@ -22,6 +22,15 @@ const schema = joi.object().keys({
   }).required(),
   sslDomains: joi.array().items(joi.string()),
   forceSSL: joi.bool(),
+  dnsServers: joi.array().max(2).items(joi.string()),
+  httpHeaders: joi.object().keys({
+    strictTransportSecurity: joi.string(),
+    xFrameOptions: joi.string(),
+    xContentTypeOptions: joi.string(),
+    xXssProtection: joi.string(),
+    xRobotsTag: joi.string(),
+    contentSecurityPolicy: joi.string()
+  }),
   region: joi.string(),
   minInstances: joi.number().min(1).required(),
   maxInstances: joi.number().min(1),

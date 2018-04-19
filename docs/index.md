@@ -72,6 +72,21 @@ module.exports = {
         // (optional) Redirect http to https
         forceSSL: true,
 
+        // (optional) If no DNS-Server is set, the default VPC's DNS-Server is used
+        // This is needed for the resolver within the Nginx-config
+        dnsServers: ['8.8.8.8', '8.8.4.4'],
+
+        // (optional) Adjust HTTP-headers where needed. Except for the contentSecurityPolicy,
+        // the settings are already adjusted for improved security.
+        httpHeaders: {
+            strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload',
+            xFrameOptions: 'DENY',
+            xContentTypeOptions: 'nosniff',
+            xXssProtection: '1; mode=block',
+            xRobotsTag: 'none',
+            contentSecurityPolicy: 'default-src \'self\' \'unsafe-inline\' https: wss:;'
+        },
+
         // (optional, default is us-east-1) AWS region to deploy to
         region: 'us-west-1',
 
@@ -114,7 +129,7 @@ module.exports = {
 }
 ```
 
-Changes to `yumPackages`, `forceSSL` and `buildOptions` requires deploying a new version to take affect.
+Changes to `yumPackages`, `forceSSL`, `dnsServer`, `httpHeaders` and `buildOptions` requires deploying a new version to take affect.
 
 ## Commands
 

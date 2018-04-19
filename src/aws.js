@@ -6,6 +6,7 @@ export let beanstalk = {};
 export let iam = {};
 export let autoScaling = {};
 export let acm = {};
+export let ec2 = {};
 /* eslint-enable import/no-mutable-exports */
 
 export default function configure({ auth, name, region }) {
@@ -22,4 +23,5 @@ export default function configure({ auth, name, region }) {
   iam = new AWS.IAM({ apiVersion: '2010-05-08' });
   autoScaling = new AWS.AutoScaling({ apiVersion: '2011-01-01' });
   acm = new AWS.ACM({ apiVersion: '2015-12-08' });
+  ec2 = new AWS.EC2({ apiVersion: '2016-11-15' });
 }

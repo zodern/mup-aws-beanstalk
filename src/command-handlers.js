@@ -20,7 +20,9 @@ import {
   logStep,
   names,
   tmpBuildPath,
-  shouldRebuild
+  shouldRebuild,
+  getDefaultVpcDns,
+  getHttpHeaders
 } from './utils';
 import {
   largestVersion,
@@ -131,15 +133,33 @@ export async function deploy(api) {
   const willBuild = shouldRebuild(bundlePath, api.getOptions()['cached-build']);
 
   if (willBuild) {
+    const dnsServers = config.app.dnsServers || [];
+    if (!dnsServers.length) {
+      const vpcDnsServer = await getDefaultVpcDns();
+      dnsServers.push(vpcDnsServer);
+    }
+
+    const dnsServersMaxTwo = (dnsServers.length ? dnsServers.slice(0, 2).join(' ') : null);
+    if (dnsServers.length) {
+      logStep(`=> Used DNS-servers (max. 2): ${dnsServersMaxTwo}`);
+    }
+
+    const configOptions = {
+      yumPackages: config.app.yumPackages,
+      forceSSL: config.app.forceSSL,
+      dnsServers: dnsServersMaxTwo,
+      httpHeaders: getHttpHeaders(config.app)
+    };
+
     await api.runCommand('meteor.build');
     injectFiles(
       api,
       app,
       nextVersion,
-      config.app.yumPackages,
-      config.app.forceSSL,
+      configOptions,
       config.app.buildOptions.buildLocation
     );
+
     await archiveApp(config.app.buildOptions.buildLocation, api);
   }
 
