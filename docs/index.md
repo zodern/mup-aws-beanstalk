@@ -86,6 +86,9 @@ module.exports = {
             'giflib-devel': ''
         },
 
+        // (Optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
+        gracefulShutdown: true
+
         // (optional) Same options as when deploying with mup.
         // The one difference is serverOnly now defaults to true
         buildOptions: {
@@ -220,7 +223,7 @@ ACM automatically renews the certificates.
 
 ## Graceful Shutdown
 
-This plugin can send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and clean up or do any other work needed before being shut down.
+This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it. 
 
 Before enabling this feature, make sure the IAM user has these policies:
 
@@ -239,6 +242,7 @@ new DDPGracefulShutdown({
   server: Meteor.server,
 }).installSIGTERMHandler();
 ```
+`METEOR_SIGTERM_GRACE_PERIOD_SECONDS` is set to 30 seconds.
 
 In your config, set `app.gracefulShutdown` to `true`:
 ```js
@@ -255,7 +259,6 @@ Then run `mup deploy`.
 
 You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, and `IAMReadOnlyAccess`.
 
-`METEOR_SIGTERM_GRACE_PERIOD_SECONDS` is set to 30 seconds.
 
 ## Troubleshooting
 
