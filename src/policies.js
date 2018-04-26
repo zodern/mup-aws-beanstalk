@@ -70,7 +70,7 @@ export const DeregisterEvent = '{ "source": [ "aws.elasticloadbalancing" ], "det
 export const deregisterEventTarget = (envName, role, accountId, region) => ({
   Id: 'Id532384276978',
   Arn: `arn:aws:ssm:${region}::document/AWS-RunShellScript`,
-  RoleArn: `arn:aws:iam::${accountId}:role/service-role/${role}`,
+  RoleArn: `arn:aws:iam::${accountId}:role/${role}`,
   InputTransformer: {
     InputPathsMap: {
       instance: '$.detail.requestParameters.targets[0].id'
