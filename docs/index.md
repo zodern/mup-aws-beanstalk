@@ -140,6 +140,9 @@ AWS Elastic Beanstalk is free, but you do pay for the services it uses, includin
 - Application Load Balancer. Pricing details are at https://aws.amazon.com/elasticloadbalancing/pricing/
 - S3. 3 - 4 app bundles are stored on s3. Each deploy will make 2 list requests and upload 1 file. Beanstalk might store additional files on s3.
 
+Graceful Shutdown uses the following services:
+- Cloud Trail. The trail is stored in s3 and, according to their docs, usually costs less than $3 / month.
+
 ## Rolling Deploys
 
 When deploying a new version, there is no downtime, and the number of servers handling requests is not reduced.
@@ -211,9 +214,48 @@ The command will show a list of email addresses that ACM sent an email to with i
 
 After you have followed the instructions in the email, run `mup beanstalk ssl` to configure Beanstalk to use the certificate.
 
-You can also run `mup beanstalk ssl` to view the certificate's status.
+You can also run `mup beanstalk ssl` to view the certificate's status or to resend the confirmation email.
 
 ACM automatically renews the certificates.
+
+## Graceful Shutdown
+
+This plugin can send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and clean up or do any other work needed before being shut down.
+
+Before enabling this feature, make sure the IAM user has these policies:
+
+- `IAMFullAccess`
+- `AWSCloudTrailFullAccess`
+- `CloudWatchEventsFullAccess`
+
+Next, install the [@meteorjs/ddp-graceful-shutdown](https://github.com/meteor/ddp-graceful-shutdown) npm package and add this code to your app's server:
+
+```ts
+import { DDPGracefulShutdown } from '@meteorjs/ddp-graceful-shutdown';
+import { Meteor } from 'meteor/meteor';
+
+new DDPGracefulShutdown({
+  gracePeriodMillis: 1000 * process.env.METEOR_SIGTERM_GRACE_PERIOD_SECONDS,
+  server: Meteor.server,
+}).installSIGTERMHandler();
+```
+
+In your config, set `app.gracefulShutdown` to `true`:
+```js
+module.exports = {
+    app: {
+        // ... rest of config
+
+        gracefulShutdown: true
+    }
+};
+```
+
+Then run `mup deploy`.
+
+You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, and `IAMReadOnlyAccess`.
+
+`METEOR_SIGTERM_GRACE_PERIOD_SECONDS` is set to 30 seconds.
 
 ## Troubleshooting
 

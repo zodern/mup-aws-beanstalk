@@ -6,7 +6,10 @@ import os from 'os';
 import uuid from 'uuid';
 import {
   iam,
-  beanstalk
+  beanstalk,
+  s3,
+  sts,
+  cloudWatchEvents
 } from './aws';
 
 import {
@@ -48,7 +51,12 @@ export function names(config) {
     app: `mup-${name}`,
     bundlePrefix: `mup/bundles/${name}/`,
     instanceProfile: 'aws-elasticbeanstalk-ec2-role',
-    serviceRole: 'aws-elasticbeanstalk-service-role'
+    serviceRole: 'aws-elasticbeanstalk-service-role',
+    trailBucketName: 'mup-graceful-shutdown-trail',
+    trailName: 'mup-graceful-shutdown-trail',
+    deregisterRuleName: 'mup-target-deregister',
+    eventTargetRole: `mup-envoke-run-command-${name}`,
+    eventTargetPolicyName: 'Invoke_Run_Command'
   };
 }
 
@@ -159,6 +167,12 @@ export async function attachPolicies(config, roleName, policies) {
   await Promise.all(promises);
 }
 
+export function getAccountId() {
+  return sts.getCallerIdentity()
+    .promise()
+    .then(({ Account }) => Account);
+}
+
 export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
   let exists = true;
 
@@ -237,6 +251,103 @@ export async function ensurePoliciesAttached(config, role, policies) {
 
   if (unattachedPolicies.length > 0) {
     await attachPolicies(config, role, unattachedPolicies);
+  }
+}
+
+export async function ensureInlinePolicyAttached(role, policyName, policyDocument) {
+  let exists = true;
+
+  try {
+    await iam.getRolePolicy({
+      RoleName: role,
+      PolicyName: policyName
+    }).promise();
+  } catch (e) {
+    exists = false;
+  }
+
+  if (!exists) {
+    await iam.putRolePolicy({
+      RoleName: role,
+      PolicyName: policyName,
+      PolicyDocument: policyDocument
+    }).promise();
+  }
+}
+
+export async function ensureBucketExists(buckets, bucketName, region) {
+  if (!buckets.find(bucket => bucket.Name === bucketName)) {
+    await s3.createBucket({
+      Bucket: bucketName,
+      ...(region ? {
+        CreateBucketConfiguration: {
+          LocationConstraint: region
+        }
+      } : {})
+    }).promise();
+
+    return true;
+  }
+}
+
+export async function ensureBucketPolicyAttached(bucketName, policy) {
+  let error = false;
+  let currentPolicy;
+
+  try {
+    const { Policy } = await s3.getBucketPolicy({ Bucket: bucketName }).promise();
+    currentPolicy = Policy;
+  } catch (e) {
+    error = true;
+  }
+
+  if (error || currentPolicy !== policy) {
+    const params = {
+      Bucket: bucketName,
+      Policy: policy
+    };
+
+    await s3.putBucketPolicy(params).promise();
+  }
+}
+
+export async function ensureCloudWatchRule(name, description, eventPattern) {
+  let error = false;
+
+  try {
+    await cloudWatchEvents.describeRule({ Name: name }).promise();
+  } catch (e) {
+    error = true;
+  }
+
+  if (error) {
+    await cloudWatchEvents.putRule({
+      Name: name,
+      Description: description,
+      EventPattern: eventPattern
+    }).promise();
+
+    return true;
+  }
+
+  return false;
+}
+
+export async function ensureRuleTargetExists(ruleName, target) {
+  const {
+    Targets
+  } = await cloudWatchEvents.listTargetsByRule({
+    Rule: ruleName
+  }).promise();
+
+  if (Targets.length === 0) {
+    const params = {
+      Rule: ruleName,
+      Targets: [target]
+    };
+    await cloudWatchEvents.putTargets(params).promise();
+
+    return true;
   }
 }
 
