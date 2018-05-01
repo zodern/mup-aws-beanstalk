@@ -87,7 +87,7 @@ module.exports = {
         },
 
         // (Optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
-        gracefulShutdown: true
+        gracefulShutdown: true,
 
         // (optional) Same options as when deploying with mup.
         // The one difference is serverOnly now defaults to true

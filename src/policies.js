@@ -68,7 +68,7 @@ export function eventTargetRolePolicy(accountId, env, region) {
 export const DeregisterEvent = '{ "source": [ "aws.elasticloadbalancing" ], "detail-type": [ "AWS API Call via CloudTrail" ], "detail": { "eventSource": [ "elasticloadbalancing.amazonaws.com" ], "eventName": [ "DeregisterTargets" ] } }';
 
 export const deregisterEventTarget = (envName, role, accountId, region) => ({
-  Id: 'Id532384276978',
+  Id: `mup-target-${envName}`,
   Arn: `arn:aws:ssm:${region}::document/AWS-RunShellScript`,
   RoleArn: `arn:aws:iam::${accountId}:role/${role}`,
   InputTransformer: {

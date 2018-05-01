@@ -1,20 +1,12 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import fs from 'fs';
-import random from 'random-seed';
+import { isEqual } from 'lodash';
 import os from 'os';
+import random from 'random-seed';
 import uuid from 'uuid';
-import {
-  iam,
-  beanstalk,
-  s3,
-  sts,
-  cloudWatchEvents
-} from './aws';
-
-import {
-  getRecheckInterval
-} from './recheck';
+import { beanstalk, cloudWatchEvents, iam, s3, sts } from './aws';
+import { getRecheckInterval } from './recheck';
 
 export function logStep(message) {
   console.log(chalk.blue(message));
@@ -340,7 +332,7 @@ export async function ensureRuleTargetExists(ruleName, target) {
     Rule: ruleName
   }).promise();
 
-  if (Targets.length === 0) {
+  if (!Targets.find(_target => isEqual(_target, target))) {
     const params = {
       Rule: ruleName,
       Targets: [target]
