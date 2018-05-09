@@ -17,7 +17,9 @@ export function injectFiles(api, name, version, appConfig) {
     yumPackages,
     forceSSL,
     gracefulShutdown,
-    buildOptions
+    buildOptions,
+    dnsServers,
+    httpHeaders
   } = appConfig;
   const bundlePath = buildOptions.buildLocation;
 
@@ -51,7 +53,7 @@ export function injectFiles(api, name, version, appConfig) {
 
   sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
-  copy(sourcePath, destPath, { forceSSL });
+  copy(sourcePath, destPath, { forceSSL, dnsServers, httpHeaders });
 
   if (yumPackages) {
     sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');

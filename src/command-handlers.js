@@ -34,6 +34,8 @@ import {
   names,
   tmpBuildPath,
   shouldRebuild,
+  getDefaultVpcDns,
+  getHttpHeaders,
   ensureCloudWatchRule,
   ensureRuleTargetExists,
   ensureInlinePolicyAttached
@@ -205,6 +207,20 @@ export async function deploy(api) {
   const willBuild = shouldRebuild(bundlePath, api.getOptions()['cached-build']);
 
   if (willBuild) {
+    const dnsServers = config.app.dnsServers || [];
+    if (!dnsServers.length) {
+      const vpcDnsServer = await getDefaultVpcDns();
+      dnsServers.push(vpcDnsServer);
+    }
+
+    const dnsServersMaxTwo = (dnsServers.length ? dnsServers.slice(0, 2).join(' ') : null);
+    if (dnsServers.length) {
+      logStep(`=> Used DNS-servers (max. 2): ${dnsServersMaxTwo}`);
+    }
+
+    config.app.dnsServers = dnsServersMaxTwo;
+    config.app.httpHeaders = getHttpHeaders(config.app);
+
     await api.runCommand('meteor.build');
     injectFiles(
       api,
@@ -212,6 +228,7 @@ export async function deploy(api) {
       nextVersion,
       config.app
     );
+
     await archiveApp(config.app.buildOptions.buildLocation, api);
   }
 

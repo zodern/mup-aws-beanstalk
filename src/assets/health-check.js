@@ -11,6 +11,9 @@
  *
  * This uses the same version of node that the app is using,
  * so it needs to support Node 0.10.
+ *
+ * As a failsafe, the argument 'start' needs to get passed to the
+ * server when being started.
  */
 
 var http = require('http');
@@ -48,11 +51,19 @@ var server = http.createServer(function (request, response) {
   }, 3000);
 });
 
+if (process.argv && process.argv[2] === 'start') {
+  try {
+    server.listen(8039);
+    log('Started health check server', true);
+  } catch (e) {
+    // Port is being used, likely from another health-check server running
+    log('Port being used');
 
-try {
-  server.listen(8039);
-  log('Started health check server', true);
-} catch (e) {
-  // Port is being used, likely from another health-check server running
-  log('Port being used');
+    try {
+      log('Starting health check server on backup port');
+      server.listen(8049);
+    } catch (eBackup) {
+      log('Backup-port being used');
+    }
+  }
 }

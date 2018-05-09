@@ -15,7 +15,7 @@ echo $(npm --version)
 export METEOR_SETTINGS=$(node -e 'console.log(decodeURIComponent(process.env.METEOR_SETTINGS_ENCODED))')
 
 echo "=> Starting health check server"
-node health-check.js &
+node health-check.js 'start' &
 
 echo "=> Starting App"
 node main.js

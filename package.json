@@ -7,7 +7,7 @@
     "prepare": "npm run build",
     "build": "babel src --out-dir lib --sourceRoot=./ --copy-files --sourcemaps",
     "build:watch": "npm run build -s -- -w",
-    "lint": "npm run lint:code && npm run lint:docs",
+    "lint": "npm run prepare; npm run build; npm run lint:code && npm run lint:docs",
     "lint:docs": "node ./tests/validate-docs.js",
     "lint:code": "eslint .",
     "pretest": "npm run lint -s",
