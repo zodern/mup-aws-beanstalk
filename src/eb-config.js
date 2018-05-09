@@ -92,6 +92,10 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
       Namespace: 'aws:elasticbeanstalk:environment:process:default',
       OptionName: 'StickinessEnabled',
       Value: 'true'
+    }, {
+      Namespace: 'aws:elasticbeanstalk:environment:process:default',
+      OptionName: 'DeregistrationDelay',
+      Value: '75'
     }]
   };
 
@@ -99,6 +103,7 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
 
   env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
   env.PORT = 8081;
+  env.METEOR_SIGTERM_GRACE_PERIOD_SECONDS = 30;
 
   Object.keys(env).forEach((envName) => {
     const value = env[envName];

@@ -12,13 +12,16 @@ function copy(source, destination, vars = {}) {
   fs.writeFileSync(destination, contents);
 }
 
-export function injectFiles(api, name, version, configOptions, bundlePath) {
+export function injectFiles(api, name, version, appConfig) {
   const {
     yumPackages,
     forceSSL,
+    gracefulShutdown,
+    buildOptions,
     dnsServers,
     httpHeaders
-  } = (configOptions || { });
+  } = appConfig;
+  const bundlePath = buildOptions.buildLocation;
 
   let sourcePath = api.resolvePath(__dirname, './assets/package.json');
   let destPath = api.resolvePath(bundlePath, 'bundle/package.json');
@@ -56,6 +59,12 @@ export function injectFiles(api, name, version, configOptions, bundlePath) {
     sourcePath = api.resolvePath(__dirname, './assets/packages.yaml');
     destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/packages.config');
     copy(sourcePath, destPath, { packages: yumPackages });
+  }
+
+  if (gracefulShutdown) {
+    sourcePath = api.resolvePath(__dirname, './assets/graceful_shutdown.yaml');
+    destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/graceful_shutdown.config');
+    copy(sourcePath, destPath);
   }
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');

@@ -3,8 +3,18 @@ import {
   acm,
   s3,
   beanstalk,
-  autoScaling
+  autoScaling,
+  cloudTrail
 } from './aws';
+import {
+  rolePolicy,
+  trailBucketPolicy,
+  DeregisterEvent,
+  deregisterEventTarget,
+  serviceRole,
+  eventTargetRolePolicy,
+  eventTargetRole
+} from './policies';
 import upload from './upload';
 import {
   archiveApp,
@@ -12,17 +22,23 @@ import {
 } from './prepare-bundle';
 import {
   coloredStatusText,
+  ensureBucketExists,
   ensureInstanceProfileExists,
   ensureRoleExists,
   ensureRoleAdded,
   ensurePoliciesAttached,
+  ensureBucketPolicyAttached,
+  getAccountId,
   getLogs,
   logStep,
   names,
   tmpBuildPath,
   shouldRebuild,
   getDefaultVpcDns,
-  getHttpHeaders
+  getHttpHeaders,
+  ensureCloudWatchRule,
+  ensureRuleTargetExists,
+  ensureInlinePolicyAttached
 } from './utils';
 import {
   largestVersion,
@@ -53,7 +69,13 @@ export async function setup(api) {
     bucket: bucketName,
     app: appName,
     instanceProfile,
-    serviceRole
+    serviceRole: serviceRoleName,
+    trailBucketName,
+    trailName,
+    deregisterRuleName,
+    environment: environmentName,
+    eventTargetRole: eventTargetRoleName,
+    eventTargetPolicyName
   } = names(config);
 
   logStep('=> Setting up');
@@ -63,36 +85,39 @@ export async function setup(api) {
     Buckets
   } = await s3.listBuckets().promise();
 
-  if (!Buckets.find(bucket => bucket.Name === bucketName)) {
-    await s3.createBucket({
-      Bucket: bucketName,
-      ...(config.app.region ? {
-        CreateBucketConfiguration: {
-          LocationConstraint: config.app.region
-        }
-      } : {})
-    }).promise();
+  const beanstalkBucketCreated = await ensureBucketExists(Buckets, bucketName, appConfig.region);
+
+  if (beanstalkBucketCreated) {
     console.log('  Created Bucket');
   }
 
   logStep('=> Ensuring IAM Roles and Instance Profiles are setup');
 
   // Create role and instance profile
-  await ensureRoleExists(config, instanceProfile, '{ "Version": "2008-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }');
+  await ensureRoleExists(config, instanceProfile, rolePolicy);
   await ensureInstanceProfileExists(config, instanceProfile);
   await ensurePoliciesAttached(config, instanceProfile, [
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier',
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker',
-    'arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier'
+    'arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier',
+    ...appConfig.gracefulShutdown ? ['arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'] : []
   ]);
   await ensureRoleAdded(config, instanceProfile, instanceProfile);
 
   // Create role used by enhanced health
-  await ensureRoleExists(config, serviceRole, '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "elasticbeanstalk.amazonaws.com" }, "Action": "sts:AssumeRole", "Condition": { "StringEquals": { "sts:ExternalId": "elasticbeanstalk" } } } ] }');
-  await ensurePoliciesAttached(config, serviceRole, [
+  await ensureRoleExists(config, serviceRoleName, serviceRole);
+  await ensurePoliciesAttached(config, serviceRoleName, [
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth',
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
   ]);
+
+  if (appConfig.gracefulShutdown) {
+    const accountId = await getAccountId();
+    const policy = eventTargetRolePolicy(accountId, environmentName, appConfig.region || 'us-east-1');
+
+    await ensureRoleExists(config, eventTargetRoleName, eventTargetRole);
+    await ensureInlinePolicyAttached(eventTargetRoleName, eventTargetPolicyName, policy);
+  }
 
   // Create beanstalk application if needed
   const {
@@ -107,6 +132,55 @@ export async function setup(api) {
 
     await beanstalk.createApplication(params).promise();
     console.log('  Created Beanstalk application');
+  }
+
+  if (appConfig.gracefulShutdown) {
+    logStep('=> Ensuring Graceful Shutdown is setup');
+
+    const region = appConfig.region || 'us-east-1';
+    const accountId = await getAccountId();
+    const policy = trailBucketPolicy(accountId, trailBucketName);
+
+    const trailBucketCreated = await ensureBucketExists(Buckets, trailBucketName, appConfig.region);
+    await ensureBucketPolicyAttached(trailBucketName, policy);
+
+    if (trailBucketCreated) {
+      console.log('  Created bucket for Cloud Trail');
+    }
+
+    const params = {
+      trailNameList: [
+        trailName
+      ]
+    };
+
+    const {
+      trailList
+    } = await cloudTrail.describeTrails(params).promise();
+
+    if (trailList.length === 0) {
+      const createParams = {
+        Name: trailName,
+        S3BucketName: trailBucketName
+      };
+
+      await cloudTrail.createTrail(createParams).promise();
+
+      console.log('  Created CloudTrail trail');
+    }
+
+    const createdRule = await ensureCloudWatchRule(deregisterRuleName, 'Used by Meteor Up for graceful shutdown', DeregisterEvent);
+
+    if (createdRule) {
+      console.log('  Created Cloud Watch rule');
+    }
+
+    const target = deregisterEventTarget(environmentName, eventTargetRoleName, accountId, region);
+    const createdTarget = await ensureRuleTargetExists(deregisterRuleName, target, accountId);
+
+    if (createdTarget) {
+      console.log('  Created target for Cloud Watch rule');
+    }
   }
 }
 
@@ -144,20 +218,15 @@ export async function deploy(api) {
       logStep(`=> Used DNS-servers (max. 2): ${dnsServersMaxTwo}`);
     }
 
-    const configOptions = {
-      yumPackages: config.app.yumPackages,
-      forceSSL: config.app.forceSSL,
-      dnsServers: dnsServersMaxTwo,
-      httpHeaders: getHttpHeaders(config.app)
-    };
+    config.app.dnsServers = dnsServersMaxTwo;
+    config.app.httpHeaders = getHttpHeaders(config.app);
 
     await api.runCommand('meteor.build');
     injectFiles(
       api,
       app,
       nextVersion,
-      configOptions,
-      config.app.buildOptions.buildLocation
+      config.app
     );
 
     await archiveApp(config.app.buildOptions.buildLocation, api);
@@ -371,7 +440,9 @@ export async function reconfig(api) {
   desiredEbConfig.OptionSettings = mergeConfigs(desiredEbConfig.OptionSettings, customEbConfig);
 
   if (!Environments.find(env => env.Status !== 'Terminated')) {
-    const { SolutionStacks } = await beanstalk.listAvailableSolutionStacks().promise();
+    const {
+      SolutionStacks
+    } = await beanstalk.listAvailableSolutionStacks().promise();
     const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
 
     const [version] = await ebVersions(api);
@@ -519,15 +590,21 @@ export async function ssl(api) {
   logStep('=> Checking Certificate Status');
 
   const domains = config.app.sslDomains;
-  const { CertificateSummaryList } = await acm.listCertificates().promise();
+  const {
+    CertificateSummaryList
+  } = await acm.listCertificates().promise();
   let found = null;
 
   for (let i = 0; i < CertificateSummaryList.length; i++) {
-    const { DomainName, CertificateArn } = CertificateSummaryList[i];
+    const {
+      DomainName,
+      CertificateArn
+    } = CertificateSummaryList[i];
 
     if (DomainName === domains[0]) {
-      // eslint-disable-next-line no-await-in-loop
-      const { Certificate } = await acm.describeCertificate({
+      const {
+        Certificate
+      } = await acm.describeCertificate({ // eslint-disable-line no-await-in-loop
         CertificateArn
       }).promise();
 
@@ -560,7 +637,9 @@ export async function ssl(api) {
 
   /* eslint-disable no-await-in-loop */
   while (!emailsProvided && checks < 5) {
-    const { Certificate } = await acm.describeCertificate({
+    const {
+      Certificate
+    } = await acm.describeCertificate({
       CertificateArn: certificateArn
     }).promise();
     const validationOptions = Certificate.DomainValidationOptions[0];
