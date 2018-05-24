@@ -44,12 +44,18 @@ export function names(config) {
     bundlePrefix: `mup/bundles/${name}/`,
     instanceProfile: 'aws-elasticbeanstalk-ec2-role',
     serviceRole: 'aws-elasticbeanstalk-service-role',
-    trailBucketName: 'mup-graceful-shutdown-trail',
+    trailBucketPrefix: 'mup-graceful-shutdown-trail',
     trailName: 'mup-graceful-shutdown-trail',
     deregisterRuleName: 'mup-target-deregister',
     eventTargetRole: `mup-envoke-run-command-${name}`,
     eventTargetPolicyName: 'Invoke_Run_Command'
   };
+}
+
+export function createUniqueName(prefix = '') {
+  const randomNumbers = Math.floor(Math.random() * 10000);
+
+  return `${prefix}-${Date.now()}-${randomNumbers}`;
 }
 
 async function retrieveEnvironmentInfo(api, count) {
@@ -280,6 +286,10 @@ export async function ensureBucketExists(buckets, bucketName, region) {
 
     return true;
   }
+}
+
+export function findBucketWithPrefix(buckets, prefix) {
+  return buckets.find(bucket => bucket.Name.indexOf(prefix) === 0);
 }
 
 export async function ensureBucketPolicyAttached(bucketName, policy) {

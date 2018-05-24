@@ -36,7 +36,9 @@ import {
   shouldRebuild,
   ensureCloudWatchRule,
   ensureRuleTargetExists,
-  ensureInlinePolicyAttached
+  ensureInlinePolicyAttached,
+  findBucketWithPrefix,
+  createUniqueName
 } from './utils';
 import {
   largestVersion,
@@ -68,7 +70,7 @@ export async function setup(api) {
     app: appName,
     instanceProfile,
     serviceRole: serviceRoleName,
-    trailBucketName,
+    trailBucketPrefix,
     trailName,
     deregisterRuleName,
     environment: environmentName,
@@ -135,6 +137,10 @@ export async function setup(api) {
   if (appConfig.gracefulShutdown) {
     logStep('=> Ensuring Graceful Shutdown is setup');
 
+    const existingBucket = findBucketWithPrefix(Buckets, trailBucketPrefix);
+    const trailBucketName = existingBucket ?
+      existingBucket.Name :
+      createUniqueName(trailBucketPrefix);
     const region = appConfig.region || 'us-east-1';
     const accountId = await getAccountId();
     const policy = trailBucketPolicy(accountId, trailBucketName);
