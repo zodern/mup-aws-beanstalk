@@ -2,7 +2,7 @@ import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
 import { round } from 'lodash';
-import { getNodeVersion, logStep } from './utils';
+import { getNodeVersion, logStep, names } from './utils';
 
 function copy(source, destination, vars = {}) {
   let contents = fs.readFileSync(source).toString();
@@ -17,9 +17,14 @@ export function injectFiles(api, name, version, appConfig) {
     yumPackages,
     forceSSL,
     gracefulShutdown,
-    buildOptions
+    buildOptions,
+    longEnvVars,
+    region = 'us-east-1'
   } = appConfig;
   const bundlePath = buildOptions.buildLocation;
+  const {
+    bucket
+  } = names({ app: appConfig });
 
   let sourcePath = api.resolvePath(__dirname, './assets/package.json');
   let destPath = api.resolvePath(bundlePath, 'bundle/package.json');
@@ -63,6 +68,15 @@ export function injectFiles(api, name, version, appConfig) {
     sourcePath = api.resolvePath(__dirname, './assets/graceful_shutdown.yaml');
     destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/graceful_shutdown.config');
     copy(sourcePath, destPath);
+  }
+
+  if (longEnvVars) {
+    sourcePath = api.resolvePath(__dirname, './assets/env.yaml');
+    destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/env.config');
+    copy(sourcePath, destPath, {
+      bucketName: bucket,
+      region
+    });
   }
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');

@@ -5,10 +5,11 @@ import {
   names
 } from './utils';
 
-export function createDesiredConfig(mupConfig, buildLocation, api) {
+export function createDesiredConfig(mupConfig, settings, longEnvVars) {
   const {
     env,
-    instanceType
+    instanceType,
+    customBeanstalkConfig = []
   } = mupConfig.app;
   const {
     instanceProfile,
@@ -99,21 +100,36 @@ export function createDesiredConfig(mupConfig, buildLocation, api) {
     }]
   };
 
-  const settingsString = JSON.stringify(api.getSettings());
+  const settingsString = JSON.stringify(settings);
 
-  env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
-  env.PORT = 8081;
-  env.METEOR_SIGTERM_GRACE_PERIOD_SECONDS = 30;
-
-  Object.keys(env).forEach((envName) => {
-    const value = env[envName];
-
+  if (longEnvVars) {
+    console.log('ebconfig for long env vars');
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',
-      OptionName: envName,
-      Value: value.toString()
+      OptionName: 'MUP_ENV_FILE_VERSION',
+      Value: '1'
     });
-  });
+  } else {
+    env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
+
+    Object.keys(env).forEach((envName) => {
+      const value = env[envName];
+
+      config.OptionSettings.push({
+        Namespace: 'aws:elasticbeanstalk:application:environment',
+        OptionName: envName,
+        Value: value.toString()
+      });
+    });
+  }
+
+  const customOptions = customBeanstalkConfig.map(option => ({
+    Namespace: option.namespace,
+    OptionName: option.option,
+    Value: option.value
+  }));
+
+  config.OptionSettings = mergeConfigs(config.OptionSettings, customOptions);
 
   return config;
 }

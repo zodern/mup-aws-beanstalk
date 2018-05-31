@@ -42,3 +42,29 @@ export default function upload(appConfig, bucket, key, bundlePath) {
     });
   });
 }
+
+export function uploadEnvFile(bucket, env, settings, version = 1) {
+  let content = '';
+  const settingsString = JSON.stringify(settings);
+
+  Object.keys(env).forEach((key) => {
+    content += `${key}=${encodeURIComponent(env[key])}\n`;
+  });
+
+  content += `METEOR_SETTINGS_ENCODED=${encodeURIComponent(settingsString)}`;
+
+  return new Promise((resolve, reject) => {
+    const uploader = s3.upload({
+      Bucket: bucket,
+      Body: content,
+      Key: `env/${version}.txt`
+    });
+    uploader.send((err, result) => {
+      if (err) {
+        return reject(err);
+      }
+
+      resolve(result);
+    });
+  });
+}
