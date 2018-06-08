@@ -5,6 +5,7 @@ import { isEqual } from 'lodash';
 import os from 'os';
 import random from 'random-seed';
 import uuid from 'uuid';
+import { execSync } from 'child_process';
 import { beanstalk, cloudWatchEvents, iam, s3, sts } from './aws';
 import { getRecheckInterval } from './recheck';
 
@@ -378,4 +379,19 @@ export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
     safeToReconfig: optionEnabled && (previouslyMigrated || ranDeploy),
     enabled: optionEnabled
   };
+}
+
+export function createVersionDescription(api, appConfig) {
+  const appPath = api.resolvePath(process.cwd(), appConfig.path);
+  let description = '';
+
+  try {
+    description = execSync('git log -1 --pretty=%B', {
+      cwd: appPath
+    }).toString();
+  } catch (e) {
+    description = `Deployed by Mup on ${new Date().toUTCString()}`;
+  }
+
+  return description;
 }

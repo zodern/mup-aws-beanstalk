@@ -40,7 +40,8 @@ import {
   ensureInlinePolicyAttached,
   findBucketWithPrefix,
   createUniqueName,
-  checkLongEnvSafe
+  checkLongEnvSafe,
+  createVersionDescription
 } from './utils';
 import {
   largestVersion,
@@ -232,7 +233,7 @@ export async function deploy(api) {
   await beanstalk.createApplicationVersion({
     ApplicationName: app,
     VersionLabel: nextVersion.toString(),
-    Description: `Deployed by Mup on ${new Date().toUTCString()}`,
+    Description: createVersionDescription(api, config.app),
     SourceBundle: {
       S3Bucket: bucket,
       S3Key: key
