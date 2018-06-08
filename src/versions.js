@@ -69,6 +69,32 @@ export async function largestVersion(api) {
   return version;
 }
 
+export async function largestEnvVersion(api) {
+  const versions = [0];
+  const prefix = 'env/';
+  const config = api.getConfig();
+
+  const {
+    bucket: bucketName
+  } = names(config);
+
+  const uploadedBundles = await s3.listObjectsV2({
+    Bucket: bucketName,
+    Prefix: prefix
+  }).promise();
+
+
+  if (uploadedBundles.Contents.length > 0) {
+    uploadedBundles.Contents.forEach((bundle) => {
+      const bundleVersion = parseInt(bundle.Key.split(prefix)[1], 10);
+
+      versions.push(bundleVersion);
+    });
+  }
+
+  return versions.sort((a, b) => b - a)[0];
+}
+
 export async function oldVersions(api) {
   const appVersions = await ebVersions(api);
   const bundleVersions = await s3Versions(api);

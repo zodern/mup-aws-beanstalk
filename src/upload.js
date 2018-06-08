@@ -1,4 +1,5 @@
 import fs from 'fs';
+import shellEscape from 'shell-escape';
 import {
   s3
 } from './aws';
@@ -43,15 +44,16 @@ export default function upload(appConfig, bucket, key, bundlePath) {
   });
 }
 
-export function uploadEnvFile(bucket, env, settings, version = 1) {
+export function uploadEnvFile(bucket, version, env, settings) {
   let content = '';
-  const settingsString = JSON.stringify(settings);
+  const settingsString = encodeURIComponent(JSON.stringify(settings));
 
   Object.keys(env).forEach((key) => {
-    content += `${key}=${encodeURIComponent(env[key])}\n`;
+    const value = shellEscape([env[key]]);
+    content += `export ${key}=${value}\n`;
   });
 
-  content += `METEOR_SETTINGS_ENCODED=${encodeURIComponent(settingsString)}`;
+  content += `export METEOR_SETTINGS_ENCODED=${shellEscape([settingsString])}`;
 
   return new Promise((resolve, reject) => {
     const uploader = s3.upload({

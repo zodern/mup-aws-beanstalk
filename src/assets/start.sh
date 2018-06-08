@@ -7,6 +7,8 @@ export NVM_DIR="/.nvm"
 
 nvm use default --delete-prefix --silent
 
+[[ ! -z "$MUP_ENV_FILE_VERSION" ]] && { echo "Long Env is enabled."; source /etc/app/env.txt; }
+
 echo "Node version"
 echo $(node --version)
 echo "Npm version"

@@ -5,7 +5,7 @@ import {
   names
 } from './utils';
 
-export function createDesiredConfig(mupConfig, settings, longEnvVars) {
+export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   const {
     env,
     instanceType,
@@ -102,12 +102,12 @@ export function createDesiredConfig(mupConfig, settings, longEnvVars) {
 
   const settingsString = JSON.stringify(settings);
 
-  if (longEnvVars) {
+  if (longEnvVarsVersion) {
     console.log('ebconfig for long env vars');
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',
       OptionName: 'MUP_ENV_FILE_VERSION',
-      Value: '1'
+      Value: longEnvVarsVersion.toString()
     });
   } else {
     env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);

@@ -7,7 +7,7 @@ import { DeregisterEvent, deregisterEventTarget, eventTargetRole, eventTargetRol
 import { archiveApp, injectFiles } from './prepare-bundle';
 import upload, { uploadEnvFile } from './upload';
 import { checkLongEnvSafe, coloredStatusText, createUniqueName, ensureBucketExists, ensureBucketPolicyAttached, ensureCloudWatchRule, ensureInlinePolicyAttached, ensureInstanceProfileExists, ensurePoliciesAttached, ensureRoleAdded, ensureRoleExists, ensureRuleTargetExists, findBucketWithPrefix, getAccountId, getLogs, logStep, names, shouldRebuild, tmpBuildPath } from './utils';
-import { ebVersions, largestVersion, oldVersions } from './versions';
+import { ebVersions, largestVersion, oldVersions, largestEnvVersion } from './versions';
 
 
 export async function setup(api) {
@@ -393,12 +393,12 @@ export async function reconfig(api) {
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
       api.getSettings(),
-      config.app.longEnvVars
+      config.app.longEnvVars ? 1 : false
     );
 
     if (config.app.longEnvVars) {
       console.log('uploading env file for new env');
-      await uploadEnvFile(bucket, config.app.env, api.getSettings());
+      await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
     }
 
     const {
@@ -429,10 +429,15 @@ export async function reconfig(api) {
       enabled: longEnvEnabled,
       safeToReconfig
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
+    let nextEnvVersion = 0;
+    if (safeToReconfig) {
+      const currentEnvVersion = await largestEnvVersion(api);
+      nextEnvVersion = currentEnvVersion + 1;
+    }
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
       api.getSettings(),
-      safeToReconfig
+      safeToReconfig ? nextEnvVersion : 0
     );
     const {
       toRemove,
@@ -443,8 +448,8 @@ export async function reconfig(api) {
     );
 
     if (longEnvEnabled) {
-      console.log('uploading env file for old env');
-      await uploadEnvFile(bucket, config.app.env, api.getSettings());
+      console.log('uploading env file for old env', nextEnvVersion);
+      await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
       if (!safeToReconfig) {
         console.log('not safe to reconfig');
         // Reconfig will be run again after deploy to migrate.

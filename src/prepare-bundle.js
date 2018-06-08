@@ -18,8 +18,7 @@ export function injectFiles(api, name, version, appConfig) {
     forceSSL,
     gracefulShutdown,
     buildOptions,
-    longEnvVars,
-    region = 'us-east-1'
+    longEnvVars
   } = appConfig;
   const bundlePath = buildOptions.buildLocation;
   const {
@@ -74,8 +73,7 @@ export function injectFiles(api, name, version, appConfig) {
     sourcePath = api.resolvePath(__dirname, './assets/env.yaml');
     destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/env.config');
     copy(sourcePath, destPath, {
-      bucketName: bucket,
-      region
+      bucketName: bucket
     });
   }
 
@@ -94,7 +92,6 @@ export function archiveApp(buildLocation, api) {
   }
 
   return new Promise((resolve, reject) => {
-    // log('starting archive');
     logStep('=> Archiving Bundle');
     const sourceDir = api.resolvePath(buildLocation, 'bundle');
 

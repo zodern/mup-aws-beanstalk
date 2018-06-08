@@ -368,7 +368,7 @@ export function coloredStatusText(envColor, text) {
 // Checks if it is safe to use the implementation that supports long env variables
 export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
   const optionEnabled = appConfig.longEnvVars;
-  const previouslyMigrated = currentConfig.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:envirnment' &&
+  const previouslyMigrated = currentConfig[0].OptionSettings.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:environment' &&
       OptionName === 'MUP_ENV_FILE_VERSION');
   const reconfigCount = commandHistory.filter(({ name }) => name === 'beanstalk.reconfig').length;
   const ranDeploy = commandHistory.find(({ name }) => name === 'beanstalk.deploy') && reconfigCount > 1;

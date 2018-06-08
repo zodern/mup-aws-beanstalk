@@ -27,6 +27,7 @@ const schema = joi.object().keys({
   maxInstances: joi.number().min(1),
   instanceType: joi.string(),
   gracefulShutdown: joi.bool(),
+  longEnvVars: joi.bool(),
   yumPackages: joi.object().pattern(
     /[/s/S]*/,
     [joi.string().allow('')]
