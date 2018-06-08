@@ -1,15 +1,7 @@
-import {
-  beanstalk
-} from './aws';
-import {
-  names
-} from './utils';
-import {
-  convertToObject
-} from './eb-config';
-import {
-  waitForEnvReady
-} from './env-ready';
+import { beanstalk } from './aws';
+import { names } from './utils';
+import { convertToObject } from './eb-config';
+import { waitForEnvReady } from './env-ready';
 
 export default async function ensureSSLConfigured(config, certificateArn) {
   const {
