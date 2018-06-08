@@ -365,7 +365,7 @@ export function coloredStatusText(envColor, text) {
 }
 
 
-// Checks if it is safe to use the implementation that supports long env variables
+// Checks if it is safe to use the environment variables from s3
 export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
   const optionEnabled = appConfig.longEnvVars;
   const previouslyMigrated = currentConfig[0].OptionSettings.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:environment' &&

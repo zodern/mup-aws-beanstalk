@@ -1,14 +1,66 @@
 import chalk from 'chalk';
-import { acm, autoScaling, beanstalk, cloudTrail, s3 } from './aws';
+import {
+  acm,
+  s3,
+  beanstalk,
+  autoScaling,
+  cloudTrail
+} from './aws';
 import updateSSLConfig from './certificates';
-import { createDesiredConfig, diffConfig, scalingConfig, scalingConfigChanged } from './eb-config';
-import { waitForEnvReady, waitForHealth } from './env-ready';
-import { DeregisterEvent, deregisterEventTarget, eventTargetRole, eventTargetRolePolicy, rolePolicy, serviceRole, trailBucketPolicy } from './policies';
-import { archiveApp, injectFiles } from './prepare-bundle';
+import {
+  rolePolicy,
+  trailBucketPolicy,
+  DeregisterEvent,
+  deregisterEventTarget,
+  serviceRole,
+  eventTargetRolePolicy,
+  eventTargetRole
+} from './policies';
 import upload, { uploadEnvFile } from './upload';
-import { checkLongEnvSafe, coloredStatusText, createUniqueName, ensureBucketExists, ensureBucketPolicyAttached, ensureCloudWatchRule, ensureInlinePolicyAttached, ensureInstanceProfileExists, ensurePoliciesAttached, ensureRoleAdded, ensureRoleExists, ensureRuleTargetExists, findBucketWithPrefix, getAccountId, getLogs, logStep, names, shouldRebuild, tmpBuildPath } from './utils';
-import { ebVersions, largestVersion, oldVersions, largestEnvVersion, oldEnvVersions } from './versions';
+import {
+  archiveApp,
+  injectFiles
+} from './prepare-bundle';
+import {
+  coloredStatusText,
+  ensureBucketExists,
+  ensureInstanceProfileExists,
+  ensureRoleExists,
+  ensureRoleAdded,
+  ensurePoliciesAttached,
+  ensureBucketPolicyAttached,
+  getAccountId,
+  getLogs,
+  logStep,
+  names,
+  tmpBuildPath,
+  shouldRebuild,
+  ensureCloudWatchRule,
+  ensureRuleTargetExists,
+  ensureInlinePolicyAttached,
+  findBucketWithPrefix,
+  createUniqueName,
+  checkLongEnvSafe
+} from './utils';
+import {
+  largestVersion,
+  largestEnvVersion,
+  ebVersions,
+  oldVersions,
+  oldEnvVersions
+} from './versions';
 
+import {
+  createDesiredConfig,
+  diffConfig,
+  scalingConfig,
+  scalingConfigChanged
+} from './eb-config';
+
+import {
+  waitForEnvReady,
+  waitForHealth
+} from './env-ready';
 
 export async function setup(api) {
   const config = api.getConfig();
@@ -212,7 +264,6 @@ export async function deploy(api) {
   await api.runCommand('beanstalk.ssl');
 
   if (config.app.longEnvVars) {
-    console.log('checking if should migrate');
     const {
       ConfigurationSettings
     } = await beanstalk.describeConfigurationSettings({
@@ -225,7 +276,6 @@ export async function deploy(api) {
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
 
     if (!migrated) {
-      console.log('not migrated, doing it now');
       // We know the bundle now supports longEnvVars, so it is safe to migrate
       await api.runCommand('beanstalk.reconfig');
     }
@@ -239,7 +289,6 @@ export async function logs(api) {
     data,
     instance
   }) => {
-    // console.log(data);
     data = data.split('-------------------------------------\n/var/log/');
     process.stdout.write(`${instance} `);
     process.stdout.write(data[1]);
@@ -406,7 +455,6 @@ export async function reconfig(api) {
     );
 
     if (config.app.longEnvVars) {
-      console.log('uploading env file for new env');
       await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
     }
 
@@ -457,15 +505,12 @@ export async function reconfig(api) {
     );
 
     if (longEnvEnabled) {
-      console.log('uploading env file for old env', nextEnvVersion);
       await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
       if (!safeToReconfig) {
-        console.log('not safe to reconfig');
         // Reconfig will be run again after deploy to migrate.
         // This way we know the bundle includes the necessary files
         return;
       }
-      console.log('safe to reconfig');
     }
 
     if (toRemove.length > 0 || toUpdate.length > 0) {
