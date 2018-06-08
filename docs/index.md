@@ -86,8 +86,11 @@ module.exports = {
             'giflib-devel': ''
         },
 
-        // (Optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
+        // (optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
         gracefulShutdown: true,
+
+        // (optional) Supports large environment variables and settings.json by storing them in s3. 
+        longEnvVars: true,
 
         // (optional) Same options as when deploying with mup.
         // The one difference is serverOnly now defaults to true
@@ -117,7 +120,7 @@ module.exports = {
 }
 ```
 
-Changes to `yumPackages`, `forceSSL` and `buildOptions` requires deploying a new version to take affect.
+Changes to `yumPackages`, `forceSSL`, `buildOptions`, and `longEnvVars` requires deploying a new version to take affect.
 
 ## Commands
 
