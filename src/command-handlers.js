@@ -7,7 +7,7 @@ import { DeregisterEvent, deregisterEventTarget, eventTargetRole, eventTargetRol
 import { archiveApp, injectFiles } from './prepare-bundle';
 import upload, { uploadEnvFile } from './upload';
 import { checkLongEnvSafe, coloredStatusText, createUniqueName, ensureBucketExists, ensureBucketPolicyAttached, ensureCloudWatchRule, ensureInlinePolicyAttached, ensureInstanceProfileExists, ensurePoliciesAttached, ensureRoleAdded, ensureRoleExists, ensureRuleTargetExists, findBucketWithPrefix, getAccountId, getLogs, logStep, names, shouldRebuild, tmpBuildPath } from './utils';
-import { ebVersions, largestVersion, oldVersions, largestEnvVersion } from './versions';
+import { ebVersions, largestVersion, oldVersions, largestEnvVersion, oldEnvVersions } from './versions';
 
 
 export async function setup(api) {
@@ -347,13 +347,15 @@ export async function restart(api) {
 export async function clean(api) {
   const config = api.getConfig();
   const {
-    app
+    app,
+    bucket
   } = names(config);
 
   logStep('=> Finding old versions');
   const {
     versions
   } = await oldVersions(api);
+  const envVersions = await oldEnvVersions(api);
 
   logStep('=> Removing old versions');
 
@@ -363,6 +365,13 @@ export async function clean(api) {
       ApplicationName: app,
       VersionLabel: versions[i].toString(),
       DeleteSourceBundle: true
+    }).promise());
+  }
+
+  for (let i = 0; i < envVersions.length; i++) {
+    promises.push(s3.deleteObject({
+      Bucket: bucket,
+      Key: `env/${envVersions[i]}.txt`
     }).promise());
   }
 
