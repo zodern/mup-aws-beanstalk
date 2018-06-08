@@ -1,6 +1,6 @@
 files:
-    # Runs right before `npm install` in '.../50npm.sh'
-    "/opt/elasticbeanstalk/hooks/appdeploy/pre/49node.sh" :
+    # Runs before `npm install` in '50npm.sh'
+    "/opt/elasticbeanstalk/hooks/appdeploy/pre/45node.sh" :
         mode: "000775"
         owner: root
         group: users

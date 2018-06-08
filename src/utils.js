@@ -363,3 +363,19 @@ export function coloredStatusText(envColor, text) {
   }
   return text;
 }
+
+
+// Checks if it is safe to use the environment variables from s3
+export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
+  const optionEnabled = appConfig.longEnvVars;
+  const previouslyMigrated = currentConfig[0].OptionSettings.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:environment' &&
+      OptionName === 'MUP_ENV_FILE_VERSION');
+  const reconfigCount = commandHistory.filter(({ name }) => name === 'beanstalk.reconfig').length;
+  const ranDeploy = commandHistory.find(({ name }) => name === 'beanstalk.deploy') && reconfigCount > 1;
+
+  return {
+    migrated: previouslyMigrated,
+    safeToReconfig: optionEnabled && (previouslyMigrated || ranDeploy),
+    enabled: optionEnabled
+  };
+}

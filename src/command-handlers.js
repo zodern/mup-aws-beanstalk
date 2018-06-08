@@ -6,6 +6,7 @@ import {
   autoScaling,
   cloudTrail
 } from './aws';
+import updateSSLConfig from './certificates';
 import {
   rolePolicy,
   trailBucketPolicy,
@@ -15,7 +16,7 @@ import {
   eventTargetRolePolicy,
   eventTargetRole
 } from './policies';
-import upload from './upload';
+import upload, { uploadEnvFile } from './upload';
 import {
   archiveApp,
   injectFiles
@@ -38,28 +39,28 @@ import {
   ensureRuleTargetExists,
   ensureInlinePolicyAttached,
   findBucketWithPrefix,
-  createUniqueName
+  createUniqueName,
+  checkLongEnvSafe
 } from './utils';
 import {
   largestVersion,
+  largestEnvVersion,
   ebVersions,
-  oldVersions
+  oldVersions,
+  oldEnvVersions
 } from './versions';
 
 import {
   createDesiredConfig,
   diffConfig,
   scalingConfig,
-  scalingConfigChanged,
-  mergeConfigs
+  scalingConfigChanged
 } from './eb-config';
 
 import {
   waitForEnvReady,
   waitForHealth
 } from './env-ready';
-
-import updateSSLConfig from './certificates';
 
 export async function setup(api) {
   const config = api.getConfig();
@@ -261,6 +262,24 @@ export async function deploy(api) {
   await api.runCommand('beanstalk.clean');
 
   await api.runCommand('beanstalk.ssl');
+
+  if (config.app.longEnvVars) {
+    const {
+      ConfigurationSettings
+    } = await beanstalk.describeConfigurationSettings({
+      EnvironmentName: environment,
+      ApplicationName: app
+    }).promise();
+
+    const {
+      migrated
+    } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
+
+    if (!migrated) {
+      // We know the bundle now supports longEnvVars, so it is safe to migrate
+      await api.runCommand('beanstalk.reconfig');
+    }
+  }
 }
 
 export async function logs(api) {
@@ -270,7 +289,6 @@ export async function logs(api) {
     data,
     instance
   }) => {
-    // console.log(data);
     data = data.split('-------------------------------------\n/var/log/');
     process.stdout.write(`${instance} `);
     process.stdout.write(data[1]);
@@ -378,13 +396,15 @@ export async function restart(api) {
 export async function clean(api) {
   const config = api.getConfig();
   const {
-    app
+    app,
+    bucket
   } = names(config);
 
   logStep('=> Finding old versions');
   const {
     versions
   } = await oldVersions(api);
+  const envVersions = await oldEnvVersions(api);
 
   logStep('=> Removing old versions');
 
@@ -397,6 +417,13 @@ export async function clean(api) {
     }).promise());
   }
 
+  for (let i = 0; i < envVersions.length; i++) {
+    promises.push(s3.deleteObject({
+      Bucket: bucket,
+      Key: `env/${envVersions[i]}.txt`
+    }).promise());
+  }
+
   // TODO: remove bundles
 
   await Promise.all(promises);
@@ -406,7 +433,8 @@ export async function reconfig(api) {
   const config = api.getConfig();
   const {
     app,
-    environment
+    environment,
+    bucket
   } = names(config);
 
   logStep('=> Configuring Beanstalk Environment');
@@ -419,16 +447,17 @@ export async function reconfig(api) {
     EnvironmentNames: [environment]
   }).promise();
 
-  const desiredEbConfig = createDesiredConfig(api.getConfig(), '', api);
-  const customEbConfig = (config.app.customBeanstalkConfig || []).map(option => ({
-    Namespace: option.namespace,
-    OptionName: option.option,
-    Value: option.value
-  }));
-
-  desiredEbConfig.OptionSettings = mergeConfigs(desiredEbConfig.OptionSettings, customEbConfig);
-
   if (!Environments.find(env => env.Status !== 'Terminated')) {
+    const desiredEbConfig = createDesiredConfig(
+      api.getConfig(),
+      api.getSettings(),
+      config.app.longEnvVars ? 1 : false
+    );
+
+    if (config.app.longEnvVars) {
+      await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
+    }
+
     const {
       SolutionStacks
     } = await beanstalk.listAvailableSolutionStacks().promise();
@@ -454,12 +483,35 @@ export async function reconfig(api) {
       ApplicationName: app
     }).promise();
     const {
+      enabled: longEnvEnabled,
+      safeToReconfig
+    } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
+    let nextEnvVersion = 0;
+    if (safeToReconfig) {
+      const currentEnvVersion = await largestEnvVersion(api);
+      nextEnvVersion = currentEnvVersion + 1;
+    }
+    const desiredEbConfig = createDesiredConfig(
+      api.getConfig(),
+      api.getSettings(),
+      safeToReconfig ? nextEnvVersion : 0
+    );
+    const {
       toRemove,
       toUpdate
     } = diffConfig(
       ConfigurationSettings[0].OptionSettings,
       desiredEbConfig.OptionSettings
     );
+
+    if (longEnvEnabled) {
+      await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
+      if (!safeToReconfig) {
+        // Reconfig will be run again after deploy to migrate.
+        // This way we know the bundle includes the necessary files
+        return;
+      }
+    }
 
     if (toRemove.length > 0 || toUpdate.length > 0) {
       await beanstalk.updateEnvironment({
