@@ -92,6 +92,9 @@ module.exports = {
         // (optional) Supports large environment variables and settings.json by storing them in s3. 
         longEnvVars: true,
 
+        // (optional, default is 3) Number of old application versions to keep
+        oldVersions: 3,
+
         // (optional) Same options as when deploying with mup.
         // The one difference is serverOnly now defaults to true
         buildOptions: {

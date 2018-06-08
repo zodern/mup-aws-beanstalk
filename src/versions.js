@@ -100,6 +100,7 @@ export async function oldEnvVersions(api) {
 }
 
 export async function oldVersions(api) {
+  const keep = api.getConfig().app.oldVersions;
   const appVersions = await ebVersions(api);
   const bundleVersions = await s3Versions(api);
 
@@ -107,7 +108,7 @@ export async function oldVersions(api) {
   const oldBundleVersions = difference(bundleVersions, appVersions);
 
   // keep the 3 newest versions
-  const oldAppVersions = appVersions.slice(3);
+  const oldAppVersions = appVersions.slice(keep);
   return {
     bundles: oldBundleVersions,
     versions: oldAppVersions
