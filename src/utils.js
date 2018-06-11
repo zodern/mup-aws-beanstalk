@@ -382,12 +382,13 @@ export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
 }
 
 export function createVersionDescription(api, appConfig) {
-  const appPath = api.resolvePath(process.cwd(), appConfig.path);
+  const appPath = api.resolvePath(api.getBasePath(), appConfig.path);
   let description = '';
 
   try {
     description = execSync('git log -1 --pretty=%B', {
-      cwd: appPath
+      cwd: appPath,
+      stdio: 'pipe'
     }).toString();
   } catch (e) {
     description = `Deployed by Mup on ${new Date().toUTCString()}`;
