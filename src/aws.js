@@ -9,6 +9,7 @@ export let acm = {};
 export let cloudTrail = {};
 export let cloudWatchEvents = {};
 export let sts = {};
+export let ssm = {};
 
 /* eslint-enable import/no-mutable-exports */
 
@@ -29,4 +30,5 @@ export default function configure({ auth, name, region }) {
   cloudTrail = new AWS.CloudTrail({ apiVersion: '2013-11-01' });
   sts = new AWS.STS({ apiVersion: '2011-06-15' });
   cloudWatchEvents = new AWS.CloudWatchEvents({ apiVersion: '2015-10-07' });
+  ssm = new AWS.SSM({ apiVersion: '2014-11-06' });
 }

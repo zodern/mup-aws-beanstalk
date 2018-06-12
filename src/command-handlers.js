@@ -14,7 +14,9 @@ import {
   deregisterEventTarget,
   serviceRole,
   eventTargetRolePolicy,
-  eventTargetRole
+  eventTargetRole,
+  gracefulShutdownAutomationDocument,
+  passRolePolicy
 } from './policies';
 import upload, { uploadEnvFile } from './upload';
 import {
@@ -41,7 +43,8 @@ import {
   findBucketWithPrefix,
   createUniqueName,
   checkLongEnvSafe,
-  createVersionDescription
+  createVersionDescription,
+  ensureSsmDocument
 } from './utils';
 import {
   largestVersion,
@@ -77,7 +80,9 @@ export async function setup(api) {
     deregisterRuleName,
     environment: environmentName,
     eventTargetRole: eventTargetRoleName,
-    eventTargetPolicyName
+    eventTargetPolicyName,
+    eventTargetPassRoleName,
+    automationDocument
   } = names(config);
 
   logStep('=> Setting up');
@@ -96,7 +101,7 @@ export async function setup(api) {
   logStep('=> Ensuring IAM Roles and Instance Profiles are setup');
 
   // Create role and instance profile
-  await ensureRoleExists(config, instanceProfile, rolePolicy);
+  await ensureRoleExists(instanceProfile, rolePolicy);
   await ensureInstanceProfileExists(config, instanceProfile);
   await ensurePoliciesAttached(config, instanceProfile, [
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier',
@@ -107,7 +112,7 @@ export async function setup(api) {
   await ensureRoleAdded(config, instanceProfile, instanceProfile);
 
   // Create role used by enhanced health
-  await ensureRoleExists(config, serviceRoleName, serviceRole);
+  await ensureRoleExists(serviceRoleName, serviceRole);
   await ensurePoliciesAttached(config, serviceRoleName, [
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth',
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
@@ -116,9 +121,11 @@ export async function setup(api) {
   if (appConfig.gracefulShutdown) {
     const accountId = await getAccountId();
     const policy = eventTargetRolePolicy(accountId, environmentName, appConfig.region || 'us-east-1');
+    const passPolicy = passRolePolicy(accountId, eventTargetRoleName);
 
-    await ensureRoleExists(config, eventTargetRoleName, eventTargetRole);
+    await ensureRoleExists(eventTargetRoleName, eventTargetRole, true);
     await ensureInlinePolicyAttached(eventTargetRoleName, eventTargetPolicyName, policy);
+    await ensureInlinePolicyAttached(eventTargetRoleName, eventTargetPassRoleName, passPolicy);
   }
 
   // Create beanstalk application if needed
@@ -173,6 +180,14 @@ export async function setup(api) {
       await cloudTrail.createTrail(createParams).promise();
 
       console.log('  Created CloudTrail trail');
+    }
+
+    const createdDocument = await ensureSsmDocument(
+      automationDocument,
+      gracefulShutdownAutomationDocument()
+    );
+    if (createdDocument) {
+      console.log('  Created SSM Automation Document');
     }
 
     const createdRule = await ensureCloudWatchRule(deregisterRuleName, 'Used by Meteor Up for graceful shutdown', DeregisterEvent);

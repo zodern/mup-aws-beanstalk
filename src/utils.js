@@ -6,7 +6,7 @@ import os from 'os';
 import random from 'random-seed';
 import uuid from 'uuid';
 import { execSync } from 'child_process';
-import { beanstalk, cloudWatchEvents, iam, s3, sts } from './aws';
+import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm } from './aws';
 import { getRecheckInterval } from './recheck';
 
 export function logStep(message) {
@@ -49,7 +49,9 @@ export function names(config) {
     trailName: 'mup-graceful-shutdown-trail',
     deregisterRuleName: 'mup-target-deregister',
     eventTargetRole: `mup-envoke-run-command-${name}`,
-    eventTargetPolicyName: 'Invoke_Run_Command'
+    eventTargetPolicyName: 'Invoke_Run_Command',
+    eventTargetPassRoleName: 'Pass_Role',
+    automationDocument: 'mup-graceful-shutdown'
   };
 }
 
@@ -172,13 +174,23 @@ export function getAccountId() {
     .then(({ Account }) => Account);
 }
 
-export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
+export async function ensureRoleExists(name, assumeRolePolicyDocument, ensureAssumeRolePolicy) {
   let exists = true;
+  let updateAssumeRolePolicy = false;
 
   try {
-    await iam.getRole({
+    const { Role } = await iam.getRole({
       RoleName: name
     }).promise();
+
+
+    const currentAssumeRolePolicy = decodeURIComponent(Role.AssumeRolePolicyDocument);
+    // Make the whitespace consistent with the current document
+    assumeRolePolicyDocument = JSON.stringify(JSON.parse(assumeRolePolicyDocument));
+
+    if (currentAssumeRolePolicy !== assumeRolePolicyDocument && ensureAssumeRolePolicy) {
+      updateAssumeRolePolicy = true;
+    }
   } catch (e) {
     exists = false;
   }
@@ -187,6 +199,11 @@ export async function ensureRoleExists(config, name, assumeRolePolicyDocument) {
     await iam.createRole({
       RoleName: name,
       AssumeRolePolicyDocument: assumeRolePolicyDocument
+    }).promise();
+  } else if (updateAssumeRolePolicy) {
+    await iam.updateAssumeRolePolicy({
+      RoleName: name,
+      PolicyDocument: assumeRolePolicyDocument
     }).promise();
   }
 }
@@ -255,17 +272,23 @@ export async function ensurePoliciesAttached(config, role, policies) {
 
 export async function ensureInlinePolicyAttached(role, policyName, policyDocument) {
   let exists = true;
+  let needsUpdating = false;
 
   try {
-    await iam.getRolePolicy({
+    const result = await iam.getRolePolicy({
       RoleName: role,
       PolicyName: policyName
     }).promise();
+    const currentPolicyDocument = decodeURIComponent(result.PolicyDocument);
+
+    if (currentPolicyDocument !== policyDocument) {
+      needsUpdating = true;
+    }
   } catch (e) {
     exists = false;
   }
 
-  if (!exists) {
+  if (!exists || needsUpdating) {
     await iam.putRolePolicy({
       RoleName: role,
       PolicyName: policyName,
@@ -393,6 +416,38 @@ export function createVersionDescription(api, appConfig) {
   } catch (e) {
     description = `Deployed by Mup on ${new Date().toUTCString()}`;
   }
-
   return description;
+}
+
+export async function ensureSsmDocument(name, content) {
+  let exists = true;
+  let needsUpdating = false;
+
+  try {
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    // If the document was created or edited on the AWS console, there is extra new
+    // line characters and whitespace
+    const currentContent = JSON.stringify(JSON.parse(result.Content.replace(/\r?\n|\r/g, '')));
+    if (currentContent !== content) {
+      needsUpdating = true;
+    }
+  } catch (e) {
+    exists = false;
+  }
+
+  if (!exists) {
+    await ssm.createDocument({
+      Content: content,
+      Name: name,
+      DocumentType: 'Automation'
+    }).promise();
+
+    return true;
+  } else if (needsUpdating) {
+    await ssm.updateDocument({
+      Content: content,
+      Name: name,
+      DocumentVersion: '$LATEST'
+    }).promise();
+  }
 }

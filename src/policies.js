@@ -32,7 +32,21 @@ export function trailBucketPolicy(accountId, bucketName) {
 
 export const rolePolicy = '{ "Version": "2008-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }';
 export const serviceRole = '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "elasticbeanstalk.amazonaws.com" }, "Action": "sts:AssumeRole", "Condition": { "StringEquals": { "sts:ExternalId": "elasticbeanstalk" } } } ] }';
-export const eventTargetRole = '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "events.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }';
+export const eventTargetRole = '{ "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "events.amazonaws.com" }, "Action": "sts:AssumeRole" }, { "Effect": "Allow", "Principal": { "Service": [ "ssm.amazonaws.com", "ec2.amazonaws.com" ] }, "Action": "sts:AssumeRole" } ] }';
+export const passRolePolicy = (accountId, role) => {
+  const policy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Action: 'iam:PassRole',
+        Resource: `arn:aws:iam::${accountId}:role/${role}`
+      }
+    ]
+  };
+
+  return JSON.stringify(policy);
+};
 
 export function eventTargetRolePolicy(accountId, env, region) {
   const policy = {
@@ -41,12 +55,10 @@ export function eventTargetRolePolicy(accountId, env, region) {
       {
         Action: 'ssm:SendCommand',
         Effect: 'Allow',
-        Resource: [
-          `arn:aws:ec2:${region}:${accountId}:instance/*`
-        ],
+        Resource: `arn:aws:ec2:${region}:${accountId}:instance/*`,
         Condition: {
-          StringEquals: {
-            'ec2:ResourceTag/*': [
+          StringLike: {
+            'ssm:resourceTag/elasticbeanstalk:environment-name': [
               env
             ]
           }
@@ -55,8 +67,18 @@ export function eventTargetRolePolicy(accountId, env, region) {
       {
         Action: 'ssm:SendCommand',
         Effect: 'Allow',
+        Resource: `arn:aws:ssm:${region}:*:document/AWS-RunShellScript`
+      },
+      {
+        Action: [
+          'ssm:StartAutomationExecution',
+          'ssm:DescribeInstanceInformation',
+          'ssm:ListCommands',
+          'ssm:ListCommandInvocations'
+        ],
+        Effect: 'Allow',
         Resource: [
-          `arn:aws:ssm:${region}:*:document/AWS-RunShellScript`
+          '*'
         ]
       }
     ]
@@ -69,18 +91,55 @@ export const DeregisterEvent = '{ "source": [ "aws.elasticloadbalancing" ], "det
 
 export const deregisterEventTarget = (envName, role, accountId, region) => ({
   Id: `mup-target-${envName}`,
-  Arn: `arn:aws:ssm:${region}::document/AWS-RunShellScript`,
+  Arn: `arn:aws:ssm:${region}:${accountId}:automation-definition/mup-graceful-shutdown:$LATEST`,
   RoleArn: `arn:aws:iam::${accountId}:role/${role}`,
   InputTransformer: {
     InputPathsMap: {
       instance: '$.detail.requestParameters.targets[0].id'
     },
-    InputTemplate: '{"commands":["cd /mup_graceful_shutdown", "ls", "PATH=\'/mup_graceful_shutdown\'", <instance>]}'
-  },
-  RunCommandParameters: {
-    RunCommandTargets: [{
-      Key: 'tag:elasticbeanstalk:environment-name',
-      Values: [envName]
-    }]
+    InputTemplate: `{"InstanceId":[<instance>], "AutomationAssumeRole": ["arn:aws:iam::${accountId}:role/${role}"], "ServiceRole": ["arn:aws:iam::${accountId}:role/${role}"], "Commands": ["cd /mup_graceful_shutdown || exit 1", "ls", "PATH='/mup_graceful_shutdown'", <instance>]}`
   }
 });
+
+export const gracefulShutdownAutomationDocument = () => {
+  const document = {
+    description: 'Automation document for mup-aws-beanstalk graceful shutdown',
+    schemaVersion: '0.3',
+    assumeRole: '{{ AutomationAssumeRole }}',
+    parameters: {
+      InstanceId: {
+        type: 'StringList',
+        description: '(Required) EC2 Instance(s) to run the command on'
+      },
+      AutomationAssumeRole: {
+        type: 'String',
+        description: '(Optional) The ARN of the role that allows Automation to perform the actions on your behalf.',
+        default: ''
+      },
+      Commands: {
+        type: 'StringList',
+        description: 'Commands to run'
+      },
+      ServiceRole: {
+        type: 'String',
+        description: 'The ARN of the role for runCommand'
+      }
+    },
+    mainSteps: [
+      {
+        name: 'runCommand',
+        action: 'aws:runCommand',
+        inputs: {
+          DocumentName: 'AWS-RunShellScript',
+          InstanceIds: '{{ InstanceId }}',
+          ServiceRoleArn: '{{ ServiceRole }}',
+          Parameters: {
+            commands: '{{ Commands }}'
+          }
+        }
+      }
+    ]
+  };
+
+  return JSON.stringify(document);
+};
