@@ -236,6 +236,7 @@ Before enabling this feature, make sure the IAM user has these policies:
 - `IAMFullAccess`
 - `AWSCloudTrailFullAccess`
 - `CloudWatchEventsFullAccess`
+- `AmazonSSMFullAccess`
 
 Next, install the [@meteorjs/ddp-graceful-shutdown](https://github.com/meteor/ddp-graceful-shutdown) npm package and add this code to your app's server:
 
@@ -263,7 +264,7 @@ module.exports = {
 
 Then run `mup deploy`.
 
-You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, and `IAMReadOnlyAccess`.
+You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, `IAMReadOnlyAccess`, and `AmazonSSMReadOnlyAccess`.
 
 
 ## Troubleshooting
