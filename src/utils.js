@@ -416,7 +416,7 @@ export function createVersionDescription(api, appConfig) {
   } catch (e) {
     description = `Deployed by Mup on ${new Date().toUTCString()}`;
   }
-  return description;
+  return description.split('\n')[0].slice(0, 195);
 }
 
 export async function ensureSsmDocument(name, content) {
