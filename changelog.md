@@ -1,3 +1,7 @@
+## 0.6.1 - September 17, 2018
+
+- Fix using longEnvVars in regions other than us-east-1 (@gerwinbrunner and @cunneen)
+
 ## 0.6.0 - June 19, 2018
 
 - Add graceful shutdown (sponsored by [Hive](https://hive.com/))
