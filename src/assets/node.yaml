@@ -19,3 +19,37 @@ files:
             nvm use $NODE_VERSION
             nvm alias default $NODE_VERSION
             npm i -g npm@$NPM_VERSION
+
+            sudo /bin/bash -c 'cat > /etc/fonts/conf.d/100-wkhtmltoimage-special.conf <<- "EOF"
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+            <fontconfig>
+                <match target="font">
+                    <edit mode="assign" name="rgba">
+                        <const>rgb</const>
+                    </edit>
+                </match>
+                <match target="font">
+                    <edit mode="assign" name="hinting">
+                        <bool>true</bool>
+                    </edit>
+                </match>
+                <match target="font">
+                    <edit mode="assign" name="hintstyle">
+                        <const>hintslight</const>
+                    </edit>
+                </match>
+                <match target="font">
+                    <edit mode="assign" name="antialias">
+                        <bool>true</bool>
+                    </edit>
+                </match>
+                <match target="font">
+                    <edit mode="assign" name="lcdfilter">
+                        <const>lcddefault</const>
+                    </edit>
+                </match>
+            </fontconfig>
+            EOF'
+
+            sudo /bin/bash -c 'fc-cache -f -v'
