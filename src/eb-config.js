@@ -103,7 +103,6 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   const settingsString = JSON.stringify(settings);
 
   if (longEnvVarsVersion) {
-    console.log('ebconfig for long env vars');
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',
       OptionName: 'MUP_ENV_FILE_VERSION',
