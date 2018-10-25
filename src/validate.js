@@ -32,6 +32,10 @@ const schema = joi.object().keys({
     /[/s/S]*/,
     [joi.string().allow('')]
   ),
+  additionalFiles: joi.array().items(joi.object({
+    filepath: joi.string().trim().required(),
+    content: joi.array().items(joi.string().allow(''))
+  })),
   oldVersions: joi.number(),
   customBeanstalkConfig: joi.array().items(joi.object({
     namespace: joi.string().trim().required(),

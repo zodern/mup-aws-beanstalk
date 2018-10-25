@@ -1,0 +1,9 @@
+files:
+    <% for(var index in additionalFiles) { %>"<%- additionalFiles[index].filepath %>" :
+        mode: "000775"
+        owner: root
+        group: users
+        content: |
+            <% for(var line in additionalFiles[index].content) { %><%- additionalFiles[index].content[line] %>
+            <% } %>
+    <% } %>

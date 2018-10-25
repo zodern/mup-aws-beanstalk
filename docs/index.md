@@ -89,7 +89,7 @@ module.exports = {
         // (optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
         gracefulShutdown: true,
 
-        // (optional) Supports large environment variables and settings.json by storing them in s3. 
+        // (optional) Supports large environment variables and settings.json by storing them in s3.
         longEnvVars: true,
 
         // (optional, default is 3) Number of old application versions to keep
@@ -107,6 +107,18 @@ module.exports = {
             allowIncompatibleUpdates: true,
             executable: 'meteor'
         },
+
+        // (optional) Add additional files to add to the container.
+        // "content" is a list of lines (strings) in the file.
+        additionalFiles: [
+          {
+            //Adds "mylog.log" to the logs that are tailed and exported in elastic beanstalk
+            filepath: "/opt/elasticbeanstalk/tasks/taillogs.d/mylog.conf",
+            content: [
+              "/var/log/mylog.log*"
+            ]
+          },
+        ]
 
         // (optional) Override or add options in the beanstalk config
         // this plugin creates.You can customize any option on:
@@ -137,7 +149,7 @@ Changes to `yumPackages`, `forceSSL`, `buildOptions`, and `longEnvVars` requires
 - `mup start` Scales the app back up after being stopped
 - `mup restart` Restarts the app
 - `mup beanstalk events` View events from the app's Beanstalk enviroment. Useful when troubleshooting problems.
-- `mup beanstalk clean` Removes old application versions from s3 and Beanstalk. Is automatically run by `mup deploy` 
+- `mup beanstalk clean` Removes old application versions from s3 and Beanstalk. Is automatically run by `mup deploy`
 - `mup beanstalk ssl` Sets up SSL and shows you it's current status. Automatically run by `mup reconfig` and `mup deploy`
 - `mup beanstalk status` View the app's and server's health and http request stats
 
@@ -229,7 +241,7 @@ ACM automatically renews the certificates.
 
 ## Graceful Shutdown
 
-This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it. 
+This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it.
 
 Before enabling this feature, make sure the IAM user has these policies:
 
