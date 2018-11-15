@@ -1,3 +1,7 @@
+## 0.6.2 - November 15, 2018
+
+- Fix `Throttling: Rate exceeded` errors
+
 ## 0.6.1 - September 17, 2018
 
 - Fix using longEnvVars in regions other than us-east-1 (@gerwinbrunner and @cunneen)
