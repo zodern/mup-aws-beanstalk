@@ -75,9 +75,10 @@ async function checker(config, prop, wantedValue, showProgress) {
         console.log('in check exception');
         if (checkForThrottlingException(e)) {
           handleThrottlingException();
-        } else {
-          console.log(e);
+          return setTimeout(check, getRecheckInterval());
         }
+
+        console.log(e);
         reject(e);
       }
       const value = result.Environments[0][prop];
