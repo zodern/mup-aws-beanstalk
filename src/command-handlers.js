@@ -575,13 +575,21 @@ export async function status(api) {
   const {
     environment
   } = names(api.getConfig());
+  console.log('=> AWS Elastic Beanstalk Status');
 
-  const result = await beanstalk.describeEnvironmentHealth({
-    AttributeNames: [
-      'All'
-    ],
-    EnvironmentName: environment
-  }).promise();
+  let result;
+  try {
+    await beanstalk.describeEnvironmentHealth({
+      AttributeNames: [
+        'All'
+      ],
+      EnvironmentName: environment
+    }).promise();
+  } catch (e) {
+    console.log('Envrionment has not been setup.');
+    return;
+  }
+
   const {
     InstanceHealthList
   } = await beanstalk.describeInstancesHealth({
