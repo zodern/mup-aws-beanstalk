@@ -1,3 +1,8 @@
+## Next
+
+- Fix environment sometimes not ready when trying to migrate to using environment variables stored in s3
+- Fix `mup status` command 
+
 ## 0.6.2 - November 15, 2018
 
 - Fix `Throttling: Rate exceeded` errors
