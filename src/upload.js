@@ -44,7 +44,7 @@ export default function upload(appConfig, bucket, key, bundlePath) {
   });
 }
 
-export function uploadEnvFile(bucket, version, env, settings) {
+export function envFileContent(env, settings) {
   let content = '';
   const settingsString = encodeURIComponent(JSON.stringify(settings));
 
@@ -54,6 +54,12 @@ export function uploadEnvFile(bucket, version, env, settings) {
   });
 
   content += `export METEOR_SETTINGS_ENCODED=${shellEscape([settingsString])}`;
+
+  return content;
+}
+
+export function uploadEnvFile(bucket, version, env, settings) {
+  const content = envFileContent(env, settings);
 
   return new Promise((resolve, reject) => {
     const uploader = s3.upload({

@@ -451,3 +451,21 @@ export async function ensureSsmDocument(name, content) {
     }).promise();
   }
 }
+
+export async function getEnvFileContent(api, newestVersion) {
+  const config = api.getConfig();
+  const {
+    bucket: bucketName
+  } = names(config);
+
+  try {
+    const result = await s3.getObject({
+      Bucket: bucketName,
+      Key: `env/${newestVersion}.txt`
+    }).promise();
+
+    return result.Body.toString();
+  } catch (e) {
+    return null;
+  }
+}
