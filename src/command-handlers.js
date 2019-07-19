@@ -145,12 +145,14 @@ export async function setup(api) {
 
   if (appConfig.gracefulShutdown) {
     logStep('=> Ensuring Graceful Shutdown is setup');
+    const region = appConfig.region || 'us-east-1';
 
-    const existingBucket = findBucketWithPrefix(Buckets, trailBucketPrefix);
+    const regionTrailBucketPrefix = `${trailBucketPrefix}-${region}`;
+
+    const existingBucket = findBucketWithPrefix(Buckets, regionTrailBucketPrefix);
     const trailBucketName = existingBucket ?
       existingBucket.Name :
-      createUniqueName(trailBucketPrefix);
-    const region = appConfig.region || 'us-east-1';
+      createUniqueName(regionTrailBucketPrefix);
     const accountId = await getAccountId();
     const policy = trailBucketPolicy(accountId, trailBucketName);
 
