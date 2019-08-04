@@ -30,11 +30,12 @@ var server = http.createServer(function (request, response) {
 
   log('Received health check request', true);
 
-  appRequest = http.get('http://127.0.0.1:8081', function () {
+  appRequest = http.get('http://127.0.0.1:8081', function (res) {
     log('Health check succeeded', true);
     response.statusCode = 200;
     response.end('Success');
     clearTimeout(timeout);
+    res.resume();
   }).on('error', function (e) {
     log('Request to app failed ' + e);
     response.statusCode = 500;
