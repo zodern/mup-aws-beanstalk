@@ -1,3 +1,8 @@
+## 0.6.3 - April 18, 2020
+
+- Fix memory leak in health-check.js (@jimrandomh)
+- Fix nginx config for fonts in packages (@cunneen)
+
 ## 0.6.2 - November 15, 2018
 
 - Fix `Throttling: Rate exceeded` errors
