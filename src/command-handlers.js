@@ -19,6 +19,7 @@ import {
   passRolePolicy
 } from './policies';
 import upload, { uploadEnvFile } from './upload';
+import downloadEnvFile from './download';
 import {
   archiveApp,
   injectFiles
@@ -57,6 +58,7 @@ import {
 import {
   createDesiredConfig,
   diffConfig,
+  diffSettings,
   scalingConfig,
   scalingConfigChanged
 } from './eb-config';
@@ -505,7 +507,13 @@ export async function reconfig(api) {
     let nextEnvVersion = 0;
     if (safeToReconfig) {
       const currentEnvVersion = await largestEnvVersion(api);
-      nextEnvVersion = currentEnvVersion + 1;
+      const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
+      const { envSettingsChanged } = diffSettings(currentSettings, api.getSettings())
+      if (envSettingsChanged) {
+        nextEnvVersion = currentEnvVersion + 1;
+      } else {
+        nextEnvVersion = currentEnvVersion;
+      }
     }
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
