@@ -1,5 +1,8 @@
 import {
-  difference
+  difference,
+  transform,
+  isEqual,
+  isObject
 } from 'lodash';
 import {
   names
@@ -216,4 +219,17 @@ export function diffConfig(current, desired) {
     toRemove,
     toUpdate
   };
+}
+
+export function diffSettings(current, desired) {
+  const settingsDiff = transform(current, (result, value, key) => {
+    if (!isEqual(value, desired[key])) {
+      result[key] = (isObject(value) && isObject(desired[key])) ? difference(value, desired[key]) : value;
+    }
+  });
+  const envSettingsChanged = Object.keys(settingsDiff).length > 0;
+  return {
+    settingsDiff,
+    envSettingsChanged,
+  }
 }
