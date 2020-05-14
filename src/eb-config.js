@@ -2,7 +2,8 @@ import {
   difference,
   transform,
   isEqual,
-  isObject
+  isObject,
+  merge
 } from 'lodash';
 import {
   names
@@ -222,12 +223,23 @@ export function diffConfig(current, desired) {
 }
 
 export function diffSettings(current, desired) {
-  const settingsDiff = transform(current, (result, value, key) => {
-    if (!isEqual(value, desired[key])) {
-      result[key] = (isObject(value) && isObject(desired[key])) ? difference(value, desired[key]) : value;
-    }
-  });
+  function changes(current, desired) {
+    return transform(current, function(result, value, key) {
+      if (!isEqual(value, desired[key])) {
+        result[key] = (isObject(value) && isObject(desired[key])) ? changes(value, desired[key]) : value;
+      }
+    });
+  }
+  const currentDesired = changes(current, desired);
+  const desiredCurrent = changes(desired, current);
+
+  const settingsDiff = merge(
+    {},
+    currentDesired,
+    desiredCurrent
+  )
   const envSettingsChanged = Object.keys(settingsDiff).length > 0;
+
   return {
     settingsDiff,
     envSettingsChanged,
