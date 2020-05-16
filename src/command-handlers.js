@@ -505,10 +505,11 @@ export async function reconfig(api) {
       safeToReconfig
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
     let nextEnvVersion = 0;
+    let envSettingsChanged;
     if (safeToReconfig) {
       const currentEnvVersion = await largestEnvVersion(api);
       const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
-      const { envSettingsChanged } = diffSettings(currentSettings, api.getSettings())
+      envSettingsChanged = diffSettings(currentSettings, api.getSettings()).envSettingsChanged
       if (envSettingsChanged) {
         nextEnvVersion = currentEnvVersion + 1;
       } else {
@@ -529,7 +530,9 @@ export async function reconfig(api) {
     );
 
     if (longEnvEnabled) {
-      await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
+      if (envSettingsChanged) {
+        await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
+      }
       if (!safeToReconfig) {
         // Reconfig will be run again after deploy to migrate.
         // This way we know the bundle includes the necessary files
