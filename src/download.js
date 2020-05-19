@@ -11,13 +11,6 @@ export default function downloadEnvFile(bucket, version) {
         return reject(err);
       }
       result = Buffer.from(result.Body).toString('utf8');
-      if (result.indexOf('METEOR_SETTINGS_ENCODED') !== -1) {
-        result = decodeURIComponent(result.slice(
-          result.indexOf('METEOR_SETTINGS_ENCODED') + 25,
-          result.length - 1
-        ));
-        result = JSON.parse(result);
-      }
       resolve(result);
     });
   });

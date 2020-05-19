@@ -58,10 +58,13 @@ import {
 import {
   createDesiredConfig,
   diffConfig,
-  diffSettings,
   scalingConfig,
   scalingConfigChanged
 } from './eb-config';
+
+import {
+  createEnvFile,
+} from './env-settings';
 
 import {
   waitForEnvReady,
@@ -506,10 +509,12 @@ export async function reconfig(api) {
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
     let nextEnvVersion = 0;
     let envSettingsChanged;
+    let desiredSettings;
     if (safeToReconfig) {
       const currentEnvVersion = await largestEnvVersion(api);
       const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
-      envSettingsChanged = diffSettings(currentSettings, api.getSettings()).envSettingsChanged
+      desiredSettings = createEnvFile(config.app.env, api.getSettings())
+      envSettingsChanged = currentSettings !== desiredSettings
       if (envSettingsChanged) {
         nextEnvVersion = currentEnvVersion + 1;
       } else {
@@ -531,7 +536,7 @@ export async function reconfig(api) {
 
     if (longEnvEnabled) {
       if (envSettingsChanged) {
-        await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
+        await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);
       }
       if (!safeToReconfig) {
         // Reconfig will be run again after deploy to migrate.
