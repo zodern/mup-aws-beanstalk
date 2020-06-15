@@ -1,3 +1,7 @@
+## 0.6.4 - June 14, 2020
+
+- Fix compatibility with Meteor Up 1.5
+
 ## 0.6.3 - April 18, 2020
 
 - Fix memory leak in health-check.js (@jimrandomh)
