@@ -2,9 +2,7 @@ import {
   logStep,
   names
 } from './utils';
-import {
-  beanstalk
-} from './aws';
+import { beanstalk } from './aws';
 import {
   getRecheckInterval,
   checkForThrottlingException,
