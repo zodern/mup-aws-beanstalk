@@ -530,6 +530,7 @@ export async function reconfig(api) {
     }
 
     if (toRemove.length > 0 || toUpdate.length > 0) {
+      await waitForEnvReady(config, true);
       await beanstalk.updateEnvironment({
         EnvironmentName: environment,
         OptionSettings: toUpdate,
