@@ -1,5 +1,5 @@
 {
-  "name": "mup-aws-beanstalk",
+  "name": "mup-aws-beanstalk-mp",
   "version": "0.6.4",
   "description": "Deploy apps to AWS Elastic Beanstalk using Meteor Up",
   "main": "index.js",
@@ -22,7 +22,9 @@
     "@babel/cli": "^7.10.1",
     "@babel/core": "^7.10.2",
     "babel-eslint": "^8.0.1",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "@babel/plugin-proposal-object-rest-spread": "7.10.3",
+    "@babel/plugin-transform-modules-commonjs": "7.10.1",
+    "@babel/plugin-proposal-class-properties": "7.10.1",
     "chai": "^4.1.2",
     "eslint": "^4.10.0",
     "eslint-config-airbnb": "^16.1.0",
