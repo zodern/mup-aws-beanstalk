@@ -1,9 +1,5 @@
-import {
-  difference
-} from 'lodash';
-import {
-  names
-} from './utils';
+import { difference } from 'lodash';
+import { names } from './utils';
 
 export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   const {

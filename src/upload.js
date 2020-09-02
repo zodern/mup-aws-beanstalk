@@ -1,7 +1,6 @@
 import fs from 'fs';
-import {
-  s3
-} from './aws';
+import shellEscape from 'shell-escape';
+import { s3 } from './aws';
 
 export default function upload(appConfig, bucket, key, bundlePath) {
   const params = { Bucket: bucket };
