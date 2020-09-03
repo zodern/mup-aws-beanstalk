@@ -44,9 +44,9 @@ var server = http.createServer(function (request, response) {
   });
 
   timeout = setTimeout(function () {
-    log('Request to app timed out after 3 seconds');
+    log('Request to app timed out after 30 seconds');
     appRequest.abort();
-  }, 3000);
+  }, 30000);
 });
 
 
