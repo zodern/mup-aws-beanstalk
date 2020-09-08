@@ -25,9 +25,9 @@ var log = function log(message, debug) {
 
 
 var server = http.createServer(function (request, response) {
-  console.log('Health check succeeded (health check edit)');
   response.statusCode = 200;
   response.end('Success');
+  console.log('Health check succeeded (health check edit)');
   // var timeout;
   // var appRequest;
 
