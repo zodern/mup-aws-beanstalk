@@ -30,7 +30,7 @@ files:
             
             access_log /var/log/nginx/healthd/application.log.$year-$month-$day-$hour healthd;
             access_log /var/log/nginx/access.log main;
-            client_max_body_size: 20m;
+            client_max_body_size 20m;
 
             <% if(forceSSL) { %>
             if ($http_x_forwarded_proto = "http") {
