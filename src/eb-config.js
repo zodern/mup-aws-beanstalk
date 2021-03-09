@@ -1,10 +1,15 @@
-import { difference } from 'lodash';
-import { names } from './utils';
+import {
+  difference
+} from 'lodash';
+import {
+  names
+} from './utils';
 
 export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   const {
     env,
     instanceType,
+    singleInstance,
     customBeanstalkConfig = []
   } = mupConfig.app;
   const {
@@ -14,26 +19,6 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
 
   const config = {
     OptionSettings: [{
-      Namespace: 'aws:autoscaling:trigger',
-      OptionName: 'MeasureName',
-      Value: 'CPUUtilization'
-    }, {
-      Namespace: 'aws:autoscaling:trigger',
-      OptionName: 'Statistic',
-      Value: 'Average'
-    }, {
-      Namespace: 'aws:autoscaling:trigger',
-      OptionName: 'Unit',
-      Value: 'Percent'
-    }, {
-      Namespace: 'aws:autoscaling:trigger',
-      OptionName: 'UpperThreshold',
-      Value: '75'
-    }, {
-      Namespace: 'aws:autoscaling:trigger',
-      OptionName: 'LowerThreshold',
-      Value: '35'
-    }, {
       Namespace: 'aws:autoscaling:launchconfiguration',
       OptionName: 'InstanceType',
       Value: instanceType
@@ -50,14 +35,6 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
       OptionName: 'HealthCheckPath',
       Value: '/aws-health-check-3984729847289743128904723'
     }, {
-      Namespace: 'aws:elasticbeanstalk:environment',
-      OptionName: 'EnvironmentType',
-      Value: 'LoadBalanced'
-    }, {
-      Namespace: 'aws:elasticbeanstalk:environment',
-      OptionName: 'LoadBalancerType',
-      Value: 'application'
-    }, {
       Namespace: 'aws:elasticbeanstalk:command',
       OptionName: 'DeploymentPolicy',
       Value: 'RollingWithAdditionalBatch'
@@ -70,14 +47,6 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
       OptionName: 'BatchSize',
       Value: '30'
     }, {
-      Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
-      OptionName: 'RollingUpdateEnabled',
-      Value: 'true'
-    }, {
-      Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
-      OptionName: 'RollingUpdateType',
-      Value: 'Health'
-    }, {
       Namespace: 'aws:elasticbeanstalk:environment',
       OptionName: 'ServiceRole',
       Value: serviceRole
@@ -87,15 +56,63 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
       Value: 'enhanced'
     }, {
       Namespace: 'aws:elasticbeanstalk:environment:process:default',
-      OptionName: 'StickinessEnabled',
-      Value: 'true'
-    }, {
-      Namespace: 'aws:elasticbeanstalk:environment:process:default',
       OptionName: 'DeregistrationDelay',
       Value: '75'
     }]
   };
 
+  if (!singleInstance) {
+    config.OptionSettings = config.OptionSettings.concat([{
+        Namespace: 'aws:autoscaling:trigger',
+        OptionName: 'MeasureName',
+        Value: 'CPUUtilization'
+      }, {
+        Namespace: 'aws:autoscaling:trigger',
+        OptionName: 'Statistic',
+        Value: 'Average'
+      }, {
+        Namespace: 'aws:autoscaling:trigger',
+        OptionName: 'Unit',
+        Value: 'Percent'
+      }, {
+        Namespace: 'aws:autoscaling:trigger',
+        OptionName: 'UpperThreshold',
+        Value: '75'
+      }, {
+        Namespace: 'aws:autoscaling:trigger',
+        OptionName: 'LowerThreshold',
+        Value: '35'
+      }, {
+        Namespace: 'aws:elasticbeanstalk:environment',
+        OptionName: 'EnvironmentType',
+        Value: 'LoadBalanced'
+      }, {
+        Namespace: 'aws:elasticbeanstalk:environment',
+        OptionName: 'LoadBalancerType',
+        Value: 'application'
+      }, {
+        Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
+        OptionName: 'RollingUpdateEnabled',
+        Value: 'true'
+      }, {
+        Namespace: 'aws:autoscaling:updatepolicy:rollingupdate',
+        OptionName: 'RollingUpdateType',
+        Value: 'Health'
+      }, {
+        Namespace: 'aws:elasticbeanstalk:environment:process:default',
+        OptionName: 'StickinessEnabled',
+        Value: 'true'
+      },
+    ])
+  } else {
+    console.log("INFO: SINGLE INSTANCE CONFIG SET");
+    config.OptionSettings.push({
+      Namespace: 'aws:elasticbeanstalk:environment',
+      OptionName: 'EnvironmentType',
+      Value: 'SingleInstance'
+    })
+  }
+  
   const settingsString = JSON.stringify(settings);
 
   if (longEnvVarsVersion) {
@@ -152,19 +169,20 @@ export function scalingConfigChanged(currentConfig, mupConfig) {
     currentMaxInstances !== maxInstances.toString();
 }
 
-export function scalingConfig({ minInstances, maxInstances }) {
+export function scalingConfig({
+  minInstances,
+  maxInstances
+}) {
   return {
-    OptionSettings: [
-      {
-        Namespace: 'aws:autoscaling:asg',
-        OptionName: 'MinSize',
-        Value: minInstances.toString()
-      }, {
-        Namespace: 'aws:autoscaling:asg',
-        OptionName: 'MaxSize',
-        Value: maxInstances.toString()
-      }
-    ]
+    OptionSettings: [{
+      Namespace: 'aws:autoscaling:asg',
+      OptionName: 'MinSize',
+      Value: minInstances.toString()
+    }, {
+      Namespace: 'aws:autoscaling:asg',
+      OptionName: 'MaxSize',
+      Value: maxInstances.toString()
+    }]
   };
 }
 

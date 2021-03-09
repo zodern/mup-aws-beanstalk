@@ -8,6 +8,7 @@ export const commands = _commands;
 export const validate = {
   app(config, utils) {
     if (config.app && config.app.type === 'aws-beanstalk') {
+      console.log("canary: v2");
       return validator(config, utils);
     }
 
