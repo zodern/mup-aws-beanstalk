@@ -13,7 +13,7 @@
     "pretest": "npm run lint -s",
     "test": "mocha --require babel-register --require babel-polyfill ./tests/*.spec.js"
   },
-  "author": "zodern",
+  "author": "Hrishikesh D Kakkad",
   "license": "MIT",
   "keywords": [
     "meteor-up"
@@ -35,6 +35,9 @@
     "shelljs": "^0.7.8"
   },
   "dependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.13.8",
+    "@babel/plugin-transform-modules-commonjs": "^7.13.8",
     "archiver": "^2.1.0",
     "aws-sdk": "^2.145.0",
     "axios": "^0.17.1",
