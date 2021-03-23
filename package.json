@@ -1,5 +1,5 @@
 {
-  "name": "mup-aws-beanstalk",
+  "name": "meteor-rolling-deployment-elastic-beanstalk",
   "version": "0.6.4",
   "description": "Deploy apps to AWS Elastic Beanstalk using Meteor Up",
   "main": "index.js",
