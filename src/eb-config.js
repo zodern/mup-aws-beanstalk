@@ -54,7 +54,13 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
       Namespace: 'aws:elasticbeanstalk:healthreporting:system',
       OptionName: 'SystemType',
       Value: 'enhanced'
-    }, {
+    },
+    // {
+    //   Namespace: 'aws:elasticbeanstalk:healthreporting:system',
+    //   OptionName: 'EnhancedHealthAuthEnabled',
+    //   Value: 'true'
+    // },
+    {
       Namespace: 'aws:elasticbeanstalk:environment:process:default',
       OptionName: 'DeregistrationDelay',
       Value: '75'

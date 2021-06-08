@@ -115,7 +115,7 @@ export async function setup(api) {
   await ensureRoleExists(serviceRoleName, serviceRole);
   await ensurePoliciesAttached(config, serviceRoleName, [
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth',
-    'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
+    'arn:aws:iam::aws:policy/service-role/MPAWSElasticBeanstalkService'
   ]);
 
   if (appConfig.gracefulShutdown) {
