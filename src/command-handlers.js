@@ -477,7 +477,11 @@ export async function reconfig(api) {
     const {
       SolutionStacks
     } = await beanstalk.listAvailableSolutionStacks().promise();
-    const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
+    // TODO
+    // this should give Amazon Linux 2 with latest NodeJS, as that is generally the top result
+    // still, there is a chance of getting a problematic stack.
+    // there should be a better option
+    const solutionStack = SolutionStacks.find(name => name.includes('running Node.js'));
 
     const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
