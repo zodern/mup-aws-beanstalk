@@ -133,7 +133,7 @@ export function getNodeVersion(api, bundlePath) {
 
   if (star.npmVersion) {
     return {
-      nodeVersion: star.nodeVersion,
+      nodeVersion: "14.17.1",//star.nodeVersion,
       npmVersion: star.npmVersion
     };
   }

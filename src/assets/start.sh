@@ -5,9 +5,9 @@
 export NVM_DIR="/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1
 
-nvm use default --delete-prefix --silent
+# nvm use default --delete-prefix --silent
 
-[[ ! -z "$MUP_ENV_FILE_VERSION" ]] && { echo "Long Env is enabled."; source /etc/app/env.txt; }
+[[ ! -z "$MUP_ENV_FILE_VERSION" ]] && { echo "Long Env is enabled."; source /home/longenvvars/env.txt; }
 
 echo "Node version"
 echo $(node --version)

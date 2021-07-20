@@ -57,7 +57,7 @@ export function uploadEnvFile(bucket, version, env, settings) {
     const uploader = s3.upload({
       Bucket: bucket,
       Body: content,
-      Key: `env/${version}.txt`
+      Key: `env/latest_version.txt`
     });
     uploader.send((err, result) => {
       if (err) {

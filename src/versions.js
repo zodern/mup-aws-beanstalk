@@ -67,6 +67,7 @@ export async function largestVersion(api) {
 }
 
 export async function largestEnvVersion(api) {
+  return "latest_version"
   const versions = [0];
   const prefix = 'env/';
   const config = api.getConfig();

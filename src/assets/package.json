@@ -4,5 +4,8 @@
   "scripts": {
     "preinstall": "cd programs/server && npm install",
     "start": "bash ./start.sh"
+  },
+  "engines": {
+    "node": "14.17.1"
   }
 }

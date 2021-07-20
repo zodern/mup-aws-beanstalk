@@ -49,13 +49,39 @@ export function injectFiles(api, name, version, appConfig) {
     }
   }
 
+  try {
+    fs.mkdirSync(api.resolvePath(bundlePath, 'bundle/.platform'));
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      console.log(e);
+    }
+  }
+
+  try {
+    fs.mkdirSync(api.resolvePath(bundlePath, 'bundle/.platform/nginx'));
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      console.log(e);
+    }
+  }
+
+  try {
+    fs.mkdirSync(api.resolvePath(bundlePath, 'bundle/.platform/nginx/conf.d'));
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      console.log(e);
+    }
+  }
+
   const { nodeVersion, npmVersion } = getNodeVersion(api, bundlePath);
   sourcePath = api.resolvePath(__dirname, './assets/node.yaml');
   destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/node.config');
   copy(sourcePath, destPath, { nodeVersion, npmVersion });
 
-  sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
-  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
+  // sourcePath = api.resolvePath(__dirname, './assets/nginx.yaml');
+  // destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/nginx.config');
+  sourcePath = api.resolvePath(__dirname, './assets/proxy.conf');
+  destPath = api.resolvePath(bundlePath, 'bundle/.platform/nginx/conf.d/proxy.conf');
   copy(sourcePath, destPath, { forceSSL });
 
   if (yumPackages) {

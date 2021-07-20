@@ -125,7 +125,7 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
     config.OptionSettings.push({
       Namespace: 'aws:elasticbeanstalk:application:environment',
       OptionName: 'MUP_ENV_FILE_VERSION',
-      Value: longEnvVarsVersion.toString()
+      Value: "latest_version"
     });
   } else {
     env.METEOR_SETTINGS_ENCODED = encodeURIComponent(settingsString);
