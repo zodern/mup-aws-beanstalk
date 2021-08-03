@@ -477,7 +477,12 @@ export async function reconfig(api) {
     const {
       SolutionStacks
     } = await beanstalk.listAvailableSolutionStacks().promise();
-    const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
+    const bundlePath = config.app.buildOptions.buildLocation;
+    const {
+      nodeVersion
+    } = (0, _utils.getNodeVersion)(api, bundlePath);
+    const majorNodeVersion = nodeVersion.split('.')[0];
+    const solutionStack = SolutionStacks.find(name => name.endsWith(`running Node.js ${majorNodeVersion}`));
 
     const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
