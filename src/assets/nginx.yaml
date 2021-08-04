@@ -20,6 +20,7 @@ files:
 
           server {
             listen 8080;
+            underscores_in_headers on;
 
             if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})T(\d{2})") {
               set $year $1;
