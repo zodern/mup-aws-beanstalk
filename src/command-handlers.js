@@ -593,12 +593,24 @@ export async function status(api) {
     environment
   } = names(api.getConfig());
 
-  const result = await beanstalk.describeEnvironmentHealth({
-    AttributeNames: [
-      'All'
-    ],
-    EnvironmentName: environment
-  }).promise();
+  let result;
+
+  try {
+    result = await beanstalk.describeEnvironmentHealth({
+      AttributeNames: [
+        'All'
+      ],
+      EnvironmentName: environment
+    }).promise();
+  } catch (e) {
+    if (e.message.includes('No Environment found for EnvironmentName')) {
+      console.log(' AWS Beanstalk environment does not exist');
+      return;
+    }
+
+    throw e;
+  }
+
   const {
     InstanceHealthList
   } = await beanstalk.describeInstancesHealth({
