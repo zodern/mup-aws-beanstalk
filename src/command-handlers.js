@@ -290,6 +290,7 @@ export async function deploy(api) {
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
 
     if (!migrated) {
+      console.log(chalk.yellow`  Migrating for longEnvVars`);
       // We know the bundle now supports longEnvVars, so it is safe to migrate
       await api.runCommand('beanstalk.reconfig');
     }
@@ -537,6 +538,9 @@ export async function reconfig(api) {
     if (longEnvEnabled) {
       await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
       if (!safeToReconfig) {
+        console.log(chalk.yellow`  Beanstalk Config will be updated after the next deploy`);
+        console.log(chalk.yellow`  so we can migrate to longEnvVars`);
+
         // Reconfig will be run again after deploy to migrate.
         // This way we know the bundle includes the necessary files
         return;
