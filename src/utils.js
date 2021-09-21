@@ -153,6 +153,53 @@ export function getNodeVersion(api, bundlePath) {
   };
 }
 
+export async function selectPlatformArn() {
+  const {
+    PlatformBranchSummaryList
+  } = await beanstalk.listPlatformBranches({
+    Filters: [{
+      Attribute: 'LifecycleState',
+      Operator: '=',
+      Values: ['supported']
+    }, {
+      Attribute: 'PlatformName',
+      Operator: '=',
+      Values: ['Node.js']
+    }, {
+      Attribute: 'TierType',
+      Operator: '=',
+      Values: ['WebServer/Standard']
+    }]
+  }).promise();
+
+  if (PlatformBranchSummaryList.length === 0) {
+    throw new Error('Unable to find supported Node.js platform');
+  }
+
+  const branchName = PlatformBranchSummaryList[0].BranchName;
+
+  const {
+    PlatformSummaryList
+  } = await beanstalk.listPlatformVersions({
+    Filters: [
+      {
+        Type: 'PlatformBranchName',
+        Operator: '=',
+        Values: [branchName]
+      },
+      {
+        Type: 'PlatformStatus',
+        Operator: '=',
+        Values: ['Ready']
+      }
+    ]
+  }).promise();
+
+  const arn = PlatformSummaryList[0].PlatformArn;
+
+  return arn;
+}
+
 export async function attachPolicies(config, roleName, policies) {
   const promises = [];
 

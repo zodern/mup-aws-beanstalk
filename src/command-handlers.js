@@ -44,7 +44,8 @@ import {
   createUniqueName,
   checkLongEnvSafe,
   createVersionDescription,
-  ensureSsmDocument
+  ensureSsmDocument,
+  selectPlatformArn
 } from './utils';
 import {
   largestVersion,
@@ -489,10 +490,7 @@ export async function reconfig(api) {
       await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
     }
 
-    const {
-      SolutionStacks
-    } = await beanstalk.listAvailableSolutionStacks().promise();
-    const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
+    const platformArn = await selectPlatformArn();
 
     const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
@@ -500,7 +498,7 @@ export async function reconfig(api) {
       EnvironmentName: environment,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
-      SolutionStackName: solutionStack,
+      PlatformArn: platformArn,
       OptionSettings: desiredEbConfig.OptionSettings
     }).promise();
 
