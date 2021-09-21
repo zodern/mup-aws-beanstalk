@@ -273,8 +273,6 @@ export async function deploy(api) {
     EnvironmentNames: [environment]
   }).promise();
 
-  console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
-
   await api.runCommand('beanstalk.clean');
 
   await api.runCommand('beanstalk.ssl');
@@ -295,6 +293,22 @@ export async function deploy(api) {
       // We know the bundle now supports longEnvVars, so it is safe to migrate
       await api.runCommand('beanstalk.reconfig');
     }
+  }
+
+  // Check if deploy succeeded
+  const {
+    Environments: finalEnvironments
+  } = await beanstalk.describeEnvironments({
+    ApplicationName: app,
+    EnvironmentNames: [environment]
+  }).promise();
+
+  if (nextVersion.toString() === finalEnvironments[0].VersionLabel) {
+    console.log(`"${Environments[0].CNAME}"`);
+    console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
+  } else {
+    console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
+    process.exitCode = 1;
   }
 }
 
