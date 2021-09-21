@@ -40,7 +40,7 @@ export function names(config) {
 
   return {
     bucket: `mup-${name}`,
-    environment: `mup-env-${name}`,
+    environment: config.app.envName || `mup-env-${name}`,
     app: `mup-${name}`,
     bundlePrefix: `mup/bundles/${name}/`,
     instanceProfile: 'aws-elasticbeanstalk-ec2-role',

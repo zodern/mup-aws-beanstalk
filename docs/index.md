@@ -75,6 +75,10 @@ module.exports = {
         // (optional, default is us-east-1) AWS region to deploy to
         region: 'us-west-1',
 
+        // (optional, default is "mup-env-<app name>")
+        // Name of AWS Elastic Beanstalk environment
+        envName: 'production', 
+
         // (optional) Packages to install with the yum package manager
         yumPackages: {
             // Property is the version. Leave as an empty string to install the latest version.
@@ -165,6 +169,7 @@ This does not apply when changing the instance type. Instead, Beanstalk terminat
 Load balancing is automatically configured and supports web sockets and sticky sessions.
 
 ## Scale
+
 To scale your app, modify `app.minInstances` in your mup config to how many servers you want your app deployed to. Then run `mup reconfig`.
 
 You cannot scale to 0 servers. Instead, use `mup stop`.

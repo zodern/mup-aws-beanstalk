@@ -4,6 +4,7 @@ const schema = joi.object().keys({
   name: joi.string().min(1).required(),
   path: joi.string().min(1).required(),
   type: joi.string().required(),
+  envName: joi.string().min(1),
   buildOptions: joi.object().keys({
     serverOnly: joi.bool(),
     debug: joi.bool(),
