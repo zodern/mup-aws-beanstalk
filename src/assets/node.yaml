@@ -19,3 +19,9 @@ files:
             nvm use $NODE_VERSION
             nvm alias default $NODE_VERSION
             npm i -g npm@$NPM_VERSION
+
+            APP_PATH="$(/opt/elasticbeanstalk/bin/get-config container -k app_staging_dir)"
+            cd $APP_PATH
+            echo "APP_PATH: $APP_PATH"
+            npm install
+            echo 'echo "=> 50npm.sh disabled by mup-aws-beanstalk"' > /opt/elasticbeanstalk/hooks/appdeploy/pre/50npm.sh
