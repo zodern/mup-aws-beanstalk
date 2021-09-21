@@ -271,6 +271,14 @@ Then run `mup deploy`.
 
 You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, `IAMReadOnlyAccess`, and `AmazonSSMReadOnlyAccess`.
 
+## Upgrading to AWS Linux 2
+
+AWS Elastic Beanstalk requires doing a [blue/green deployment] to update to AWS Linux 2. This involves:
+
+1) Creating a new environment for the AWS Beanstalk app. An easy way to do this is set `app.envName` in your mup config to a different name, and then run `mup deploy`. It will create a new environment with the new name you set.
+2) After the new environment is ready, make sure the app is working correctly
+3) [Swap the CNAME between the old and new environment](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.CNAMESwap.html). This will move traffic to the new environment
+4) Once the old environment is no longer being used, you can terminate it
 
 ## Troubleshooting
 
