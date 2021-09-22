@@ -91,7 +91,7 @@ async function retrieveEnvironmentInfo(api, count) {
   });
 }
 
-export async function getLogs(api) {
+export async function getLogs(api, logNames) {
   const config = api.getConfig();
   const {
     environment
@@ -117,6 +117,11 @@ export async function getLogs(api) {
   return Promise.all(Object.keys(logsForServer).map(key =>
     new Promise((resolve, reject) => {
       axios.get(logsForServer[key]).then(({ data }) => {
+        const parts = data.split('----------------------------------------\n/var/log/');
+
+        data = logNames.map(name =>
+          parts.find(part => part.trim().startsWith(name)) || 'Logs not found');
+
         resolve({
           data,
           instance: key
@@ -440,7 +445,7 @@ export function coloredStatusText(envColor, text) {
 export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
   const optionEnabled = appConfig.longEnvVars;
   const previouslyMigrated = currentConfig[0].OptionSettings.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:environment' &&
-      OptionName === 'MUP_ENV_FILE_VERSION');
+    OptionName === 'MUP_ENV_FILE_VERSION');
   const reconfigCount = commandHistory.filter(({ name }) => name === 'beanstalk.reconfig').length;
   const ranDeploy = commandHistory.find(({ name }) => name === 'beanstalk.deploy') && reconfigCount > 1;
 

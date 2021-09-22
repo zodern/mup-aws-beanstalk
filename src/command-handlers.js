@@ -315,41 +315,36 @@ export async function deploy(api) {
 }
 
 export async function logs(api) {
-  const logsContent = await getLogs(api);
-
-  logsContent.forEach(({
-    data,
-    instance
-  }) => {
-    data = data.split('-------------------------------------\n/var/log/');
-    process.stdout.write(`${instance} `);
-    process.stdout.write(data[1]);
-  });
-}
-
-export async function logsNginx(api) {
-  const logsContent = await getLogs(api);
+  const logsContent = await getLogs(api, ['web.stdout.log']);
 
   logsContent.forEach(({
     instance,
     data
   }) => {
-    data = data.split('-------------------------------------\n/var/log/');
-    console.log(`${instance} `, data[2]);
-    console.log(`${instance} `, data[4]);
+    console.log(`${instance} `, data[0]);
+  });
+}
+
+export async function logsNginx(api) {
+  const logsContent = await getLogs(api, ['nginx/error.log', 'nginx/access.log']);
+
+  logsContent.forEach(({
+    instance,
+    data
+  }) => {
+    console.log(`${instance} `, data[0]);
+    console.log(`${instance} `, data[1]);
   });
 }
 
 export async function logsEb(api) {
-  const logsContent = await getLogs(api);
+  const logsContent = await getLogs(api, ['eb-engine.log']);
 
   logsContent.forEach(({
     data,
     instance
   }) => {
-    data = data.split('\n\n\n-------------------------------------\n/var/log/');
-    process.stdout.write(`${instance} `);
-    process.stdout.write(data[2]);
+    console.log(`${instance} `, data[0]);
   });
 }
 
