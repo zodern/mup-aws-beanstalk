@@ -19,6 +19,7 @@ import {
   passRolePolicy
 } from './policies';
 import upload, { uploadEnvFile } from './upload';
+import downloadEnvFile from './download';
 import {
   archiveApp,
   injectFiles
@@ -61,6 +62,10 @@ import {
   scalingConfig,
   scalingConfigChanged
 } from './eb-config';
+
+import {
+  createEnvFile,
+} from './env-settings';
 
 import {
   waitForEnvReady,
@@ -511,9 +516,18 @@ export async function reconfig(api) {
       safeToReconfig
     } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
     let nextEnvVersion = 0;
+    let envSettingsChanged;
+    let desiredSettings;
     if (safeToReconfig) {
       const currentEnvVersion = await largestEnvVersion(api);
-      nextEnvVersion = currentEnvVersion + 1;
+      const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
+      desiredSettings = createEnvFile(config.app.env, api.getSettings())
+      envSettingsChanged = currentSettings !== desiredSettings
+      if (envSettingsChanged) {
+        nextEnvVersion = currentEnvVersion + 1;
+      } else {
+        nextEnvVersion = currentEnvVersion;
+      }
     }
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
@@ -529,7 +543,9 @@ export async function reconfig(api) {
     );
 
     if (longEnvEnabled) {
-      await uploadEnvFile(bucket, nextEnvVersion, config.app.env, api.getSettings());
+      if (envSettingsChanged) {
+        await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);
+      }
       if (!safeToReconfig) {
         console.log(chalk.yellow`  Beanstalk Config will be updated after the next deploy`);
         console.log(chalk.yellow`  so we can migrate to longEnvVars`);
