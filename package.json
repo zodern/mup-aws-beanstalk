@@ -37,13 +37,13 @@
     "shelljs": "^0.8.4"
   },
   "dependencies": {
+    "@hapi/joi": "^15.1.1",
     "archiver": "^4.0.2",
     "aws-sdk": "^2.991.0",
     "axios": "^0.21.4",
     "babel-polyfill": "^6.26.0",
     "chalk": "^2.3.0",
     "ejs": "^2.5.7",
-    "joi": "^10.6.0",
     "lodash": "^4.17.21",
     "random-seed": "^0.3.0",
     "shell-escape": "^0.2.0",
