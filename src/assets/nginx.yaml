@@ -4,7 +4,7 @@ files:
         owner: root
         group: users
         content: |
-<%- padScript(include('./proxy.conf'), 10) %>
+<%- padScript(include('./nginx.conf'), 10) %>
 
 container_commands:
   create_healthd_folder:
