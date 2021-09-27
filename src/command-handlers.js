@@ -64,7 +64,7 @@ import {
 } from './eb-config';
 
 import {
-  createEnvFile,
+  createEnvFile
 } from './env-settings';
 
 import {
@@ -312,7 +312,6 @@ export async function deploy(api) {
   }).promise();
 
   if (nextVersion.toString() === finalEnvironments[0].VersionLabel) {
-    console.log(`"${Environments[0].CNAME}"`);
     console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
   } else {
     console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
@@ -522,8 +521,8 @@ export async function reconfig(api) {
     if (safeToReconfig) {
       const currentEnvVersion = await largestEnvVersion(api);
       const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
-      desiredSettings = createEnvFile(config.app.env, api.getSettings())
-      envSettingsChanged = currentSettings !== desiredSettings
+      desiredSettings = createEnvFile(config.app.env, api.getSettings());
+      envSettingsChanged = currentSettings !== desiredSettings;
       if (envSettingsChanged) {
         nextEnvVersion = currentEnvVersion + 1;
       } else {
