@@ -262,6 +262,7 @@ export async function deploy(api) {
   }).promise();
 
   await api.runCommand('beanstalk.reconfig');
+  await waitForEnvReady(config, true);
 
   logStep('=> Deploying new version');
 
