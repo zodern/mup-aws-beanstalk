@@ -8,5 +8,7 @@ echo "File $FILE"
 test -e $FILE && exit
 echo "File does not exist"
 echo 'PATH="/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin:/home/ec2-user/.local/bin:/home/ec2-user/bin"' >> $FILE
-echo 'sudo pkill -SIGTERM -u nodejs  -n node' >> $FILE
+
+# Platforms based on Amazon Linux 2 use a different user name
+echo 'sudo pkill -SIGTERM -u nodejs -n node || sudo pkill -SIGTERM -u webapp -n node' >> $FILE
 chmod +x $FILE 
