@@ -678,6 +678,8 @@ export async function status(api) {
 export async function ssl(api) {
   const config = api.getConfig();
 
+  await waitForEnvReady(config, true);
+
   if (!config.app || !config.app.sslDomains) {
     logStep('=> Updating Beanstalk SSL Config');
     await updateSSLConfig(config);
