@@ -112,3 +112,14 @@ export const shell = {
   },
   handler: prepare(commandHandlers.shell)
 };
+
+export const debug = {
+  name: 'debug [instance-id]',
+  description: 'Connect your local Node developer tools',
+  builder(yargs) {
+    yargs.positional('instance-id', {
+      description: 'Instance id. If not provided, will show a list of instances'
+    }).strict(false);
+  },
+  handler: prepare(commandHandlers.debug)
+};

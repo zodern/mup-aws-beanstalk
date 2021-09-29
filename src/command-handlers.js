@@ -49,7 +49,8 @@ import {
   ensureSsmDocument,
   selectPlatformArn,
   pickInstance,
-  connectToInstance
+  connectToInstance,
+  executeSSHCommand
 } from './utils';
 import {
   largestVersion,
@@ -832,6 +833,81 @@ export async function shell(api) {
       process.stdout.on('resize', () => {
         stream.setWindow(process.stdout.rows, process.stdout.columns);
       });
+    });
+  }).connect(sshOptions);
+}
+
+export async function debug(api) {
+  const config = api.getConfig();
+  const {
+    selected,
+    description
+  } = await pickInstance(config, api.getArgs()[2]);
+
+  if (!selected) {
+    console.log(description);
+    console.log('Run "mup beanstalk debug <instance id>"');
+    process.exitCode = 1;
+
+    return;
+  }
+
+  const sshOptions = await connectToInstance(api, selected);
+
+  const conn = new Client();
+  conn.on('ready', async () => {
+    const result = await executeSSHCommand(
+      conn,
+      'sudo pkill -USR1 -u webapp -n node || sudo pkill -USR1 -u nodejs -n node'
+    );
+
+    if (api.verbose) {
+      console.log(result.output);
+    }
+
+    const server = {
+      ...sshOptions,
+      pem: api.resolvePath(config.app.sshKey.privateKey)
+    };
+
+    let loggedConnection = false;
+
+    api.forwardPort({
+      server,
+      localAddress: '0.0.0.0',
+      localPort: 9229,
+      remoteAddress: '127.0.0.1',
+      remotePort: 9229,
+      onError(error) {
+        console.error(error);
+      },
+      onReady() {
+        console.log('Connected to server');
+        console.log('');
+        console.log('Debugger listening on ws://127.0.0.1:9229');
+        console.log('');
+        console.log('To debug:');
+        console.log('1. Open chrome://inspect in Chrome');
+        console.log('2. Select "Open dedicated DevTools for Node"');
+        console.log('3. Wait a minute while it connects and loads the app.');
+        console.log('   When it is ready, the app\'s files will appear in the Sources tab');
+        console.log('');
+        console.log('Warning: Do not use breakpoints when debugging a production server.');
+        console.log('They will pause your server when hit, causing it to not handle methods or subscriptions.');
+        console.log('Use logpoints or something else that does not pause the server');
+        console.log('');
+        console.log('The debugger will be enabled until the next time the app is restarted,');
+        console.log('though only accessible while this command is running');
+      },
+      onConnection() {
+        if (!loggedConnection) {
+          // It isn't guaranteed the debugger is connected, but not many
+          // other tools will try to connect to port 9229.
+          console.log('');
+          console.log('Detected by debugger');
+          loggedConnection = true;
+        }
+      }
     });
   }).connect(sshOptions);
 }

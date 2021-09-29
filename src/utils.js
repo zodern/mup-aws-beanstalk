@@ -567,3 +567,31 @@ export async function connectToInstance(api, instanceId) {
     privateKey: fs.readFileSync(api.resolvePath(sshKey.privateKey), 'utf-8')
   };
 }
+
+export async function executeSSHCommand(conn, command) {
+  return new Promise((resolve, reject) => {
+    conn.exec(command, (err, outputStream) => {
+      if (err) {
+        conn.end();
+        reject(err);
+
+        return;
+      }
+
+      let output = '';
+
+      outputStream.on('data', (data) => {
+        output += data;
+      });
+
+      outputStream.stderr.on('data', (data) => {
+        output += data;
+      });
+
+      outputStream.once('close', (code) => {
+        conn.end();
+        resolve({ code, output });
+      });
+    });
+  });
+}
