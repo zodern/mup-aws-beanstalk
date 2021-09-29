@@ -476,7 +476,7 @@ export async function ensureSsmDocument(name, content) {
   let needsUpdating = false;
 
   try {
-    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$DEFAULT' }).promise();
     // If the document was created or edited on the AWS console, there is extra new
     // line characters and whitespace
     const currentContent = JSON.stringify(JSON.parse(result.Content.replace(/\r?\n|\r/g, '')));
@@ -496,10 +496,25 @@ export async function ensureSsmDocument(name, content) {
 
     return true;
   } else if (needsUpdating) {
-    await ssm.updateDocument({
-      Content: content,
-      Name: name,
-      DocumentVersion: '$LATEST'
+    try {
+      await ssm.updateDocument({
+        Content: content,
+        Name: name,
+        DocumentVersion: '$LATEST'
+      }).promise();
+    } catch (e) {
+      // If the latest document version has the correct content
+      // then it must not be the default version. Ignore the error
+      // so we can fix the default version
+      if (e.code !== 'DuplicateDocumentContent') {
+        throw e;
+      }
+    }
+
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    await ssm.updateDocumentDefaultVersion({
+      DocumentVersion: result.DocumentVersion,
+      Name: name
     }).promise();
   }
 }
