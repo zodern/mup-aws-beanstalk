@@ -6,7 +6,7 @@ import os from 'os';
 import random from 'random-seed';
 import uuid from 'uuid';
 import { execSync } from 'child_process';
-import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm } from './aws';
+import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
 import { getRecheckInterval } from './recheck';
 
 export function logStep(message) {
@@ -517,4 +517,53 @@ export async function ensureSsmDocument(name, content) {
       Name: name
     }).promise();
   }
+}
+
+export async function pickInstance(config, instance) {
+  const {
+    environment
+  } = names(config);
+
+  const { EnvironmentResources } = await beanstalk.describeEnvironmentResources({
+    EnvironmentName: environment
+  }).promise();
+  const instanceIds = EnvironmentResources.Instances.map(({ Id }) => Id);
+  const description = [
+    'Available instances',
+    ...instanceIds.map(id => `  - ${id}`)
+  ].join('\n');
+
+  return {
+    selected: instanceIds.includes(instance) ? instance : null,
+    description
+  };
+}
+
+export async function connectToInstance(api, instanceId) {
+  const {
+    sshKey
+  } = api.getConfig().app;
+
+  const { Reservations } = await ec2.describeInstances({
+    InstanceIds: [
+      instanceId
+    ]
+  }).promise();
+
+  const instance = Reservations[0].Instances[0];
+  const availabilityZone = instance.Placement.AvailabilityZone;
+
+  await ec2InstanceConnect.sendSSHPublicKey({
+    InstanceId: instanceId,
+    AvailabilityZone: availabilityZone,
+    InstanceOSUser: 'ec2-user',
+    SSHPublicKey: fs.readFileSync(api.resolvePath(sshKey.publicKey), 'utf-8')
+  }).promise();
+
+  return {
+    host: instance.PublicDnsName,
+    port: 22,
+    username: 'ec2-user',
+    privateKey: fs.readFileSync(api.resolvePath(sshKey.privateKey), 'utf-8')
+  };
 }

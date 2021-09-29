@@ -101,3 +101,14 @@ export const status = {
   description: 'View status of app',
   handler: prepare(commandHandlers.status)
 };
+
+export const shell = {
+  name: 'shell [instance-id]',
+  description: 'Open production Meteor shell',
+  builder(yargs) {
+    yargs.positional('instance-id', {
+      description: 'Instance id. If not provided, will show a list of instances'
+    }).strict(false);
+  },
+  handler: prepare(commandHandlers.shell)
+};

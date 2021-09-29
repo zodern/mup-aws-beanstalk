@@ -121,7 +121,15 @@ module.exports = {
                 option: 'Cooldown',
                 value: '300'
             }
-        ]
+        ],
+
+        // (optional) Used by "shell" and "debug" commands
+        // Public key is temporarily added to the server when needed using
+        // EC2 Instance Connect
+        sshKey: {
+          privateKey: '~/.ssh/beanstalk',
+          publicKey: '~/.ssh/beanstalk.pub'
+        }
     },
     plugins: ['mup-aws-beanstalk']
 }
@@ -234,7 +242,7 @@ ACM automatically renews the certificates.
 
 ## Graceful Shutdown
 
-This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it. 
+This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it.
 
 Before enabling this feature, make sure the IAM user has these policies:
 
@@ -270,6 +278,15 @@ module.exports = {
 Then run `mup deploy`.
 
 You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, `IAMReadOnlyAccess`, and `AmazonSSMReadOnlyAccess`.
+
+## Meteor Shell and Debug
+
+To help with debugging issues that happen in production mup-aws-beanstalk provides two commands:
+
+1) `mup beanstalk shell` to open a production Meteor shell. This is the same shell you get with `meteor shell`, but connected to your app running in Elastic Beanstalk. Your app must use the [`qualia:prod-shell`](https://github.com/qualialabs/prod-shell) or equivalent package
+2) `mup beanstalk debug` to allow connecting your local Node developer tools to the app running in production
+
+Both require the IAM user to have the `EC2InstanceConnect` policy.
 
 ## Upgrading to Amazon Linux 2
 

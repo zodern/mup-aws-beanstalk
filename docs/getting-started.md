@@ -64,9 +64,10 @@ You can select `Add user to group` and create a new group. The group should have
 - `AWSElasticBeanstalkFullAccess`
 - `IAMFullAccess` This is used to create the roles and Instance Profiles needed by Elastic Beanstalk. After the first deploy, you can replace it with `IAMReadOnlyAccess`
 - `AWSCertificateManagerFullAccess` Used to create and manage SSL certificates for the app
+- `EC2InstanceConnect` is optional. Used when accessing a production Meteor shell or to connect your node developer tools to the app running in Elastic Beanstalk
 
 In your mup config, set `app.auth.id` to the Access Key ID, and `app.auth.secret` to the Secret access key AWS gives you after creating the user.
- 
+
 ## Step 4: Deploy
 
 Simply run:
@@ -76,4 +77,3 @@ mup deploy
 ```
 
 It will setup and deploy your app.
-

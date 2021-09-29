@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { Client } from 'ssh2';
 import {
   acm,
   s3,
@@ -46,7 +47,9 @@ import {
   checkLongEnvSafe,
   createVersionDescription,
   ensureSsmDocument,
-  selectPlatformArn
+  selectPlatformArn,
+  pickInstance,
+  connectToInstance
 } from './utils';
 import {
   largestVersion,
@@ -788,4 +791,47 @@ export async function ssl(api) {
     logStep('=> Updating Beanstalk SSL Config');
     await updateSSLConfig(config, certificateArn);
   }
+}
+
+export async function shell(api) {
+  const {
+    selected,
+    description
+  } = await pickInstance(api.getConfig(), api.getArgs()[2]);
+
+  if (!selected) {
+    console.log(description);
+    console.log('Run "mup beanstalk shell <instance id>"');
+    process.exitCode = 1;
+
+    return;
+  }
+
+  const sshOptions = await connectToInstance(api, selected);
+
+  const conn = new Client();
+  conn.on('ready', () => {
+    conn.exec('sudo node /home/webapp/meteor-shell.js', {
+      pty: true
+    }, (err, stream) => {
+      if (err) {
+        throw err;
+      }
+      stream.on('close', () => {
+        conn.end();
+        process.exit();
+      });
+
+      process.stdin.setRawMode(true);
+      process.stdin.pipe(stream);
+
+      stream.pipe(process.stdout);
+      stream.stderr.pipe(process.stderr);
+      stream.setWindow(process.stdout.rows, process.stdout.columns);
+
+      process.stdout.on('resize', () => {
+        stream.setWindow(process.stdout.rows, process.stdout.columns);
+      });
+    });
+  }).connect(sshOptions);
 }
