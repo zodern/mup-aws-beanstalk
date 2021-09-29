@@ -107,24 +107,22 @@ export function injectFiles(api, name, version, appConfig) {
     copy(sourcePath, destPath);
   }
 
-  if (longEnvVars) {
-    sourcePath = api.resolvePath(__dirname, './assets/env.yaml');
-    destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/env.config');
-    copy(sourcePath, destPath, {
-      bucketName: bucket
-    });
+  sourcePath = api.resolvePath(__dirname, './assets/env.yaml');
+  destPath = api.resolvePath(bundlePath, 'bundle/.ebextensions/env.config');
+  copy(sourcePath, destPath, {
+    bucketName: bucket
+  });
 
-    sourcePath = api.resolvePath(__dirname, './assets/env.sh');
-    destPath = api.resolvePath(bundlePath, 'bundle/.platform/hooks/prebuild/47env.sh');
-    copy(sourcePath, destPath, {
-      bucketName: bucket
-    });
-  }
+  sourcePath = api.resolvePath(__dirname, './assets/env.sh');
+  destPath = api.resolvePath(bundlePath, 'bundle/.platform/hooks/prebuild/47env.sh');
+  copy(sourcePath, destPath, {
+    bucketName: bucket
+  });
 
   sourcePath = api.resolvePath(__dirname, './assets/health-check.js');
   destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');
   copy(sourcePath, destPath);
-  
+
   const customConfigPath = api.resolvePath(api.getBasePath(), `${path}/.ebextensions`);
   const customConfig = fs.existsSync(customConfigPath);
   if (customConfig) {
