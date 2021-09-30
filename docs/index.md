@@ -286,7 +286,22 @@ To help with debugging issues that happen in production mup-aws-beanstalk provid
 1) `mup beanstalk shell` to open a production Meteor shell. This is the same shell you get with `meteor shell`, but connected to your app running in Elastic Beanstalk. Your app must use the [`qualia:prod-shell`](https://github.com/qualialabs/prod-shell) or equivalent package
 2) `mup beanstalk debug` to allow connecting your local Node developer tools to the app running in production
 
-Both require the IAM user to have the `EC2InstanceConnect` policy.
+Both require the IAM user to have the `EC2InstanceConnect` policy. They also require adding the `app.sshKey` option to your mup config:
+
+```js
+module.exports = {
+  app: {
+    sshKey: {
+      privateKey: '~/.ssh/beanstalk',
+      publicKey: '~/.ssh/beanstalk.pub'
+    }
+
+    // ... rest of app config
+  }
+}
+```
+
+The public key is temporarily added to the instance when needed using EC2 Instance Connect.
 
 ## Upgrading to Amazon Linux 2
 
