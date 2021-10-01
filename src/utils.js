@@ -117,10 +117,14 @@ export async function getLogs(api, logNames) {
   return Promise.all(Object.keys(logsForServer).map(key =>
     new Promise((resolve, reject) => {
       axios.get(logsForServer[key]).then(({ data }) => {
-        const parts = data.split('----------------------------------------\n/var/log/');
+        // The separator changed with Amazon Linux 2
+        let parts = data.split('----------------------------------------\n/var/log/');
+        if (parts.length === 1) {
+          parts = data.split('-------------------------------------\n/var/log/');
+        }
 
         data = logNames.map(name =>
-          parts.find(part => part.trim().startsWith(name)) || 'Logs not found');
+          parts.find(part => part.trim().startsWith(name)));
 
         resolve({
           data,

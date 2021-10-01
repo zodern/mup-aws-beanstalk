@@ -313,13 +313,13 @@ export async function deploy(api) {
 }
 
 export async function logs(api) {
-  const logsContent = await getLogs(api, ['web.stdout.log']);
+  const logsContent = await getLogs(api, ['web.stdout.log', 'nodejs/nodejs.log']);
 
   logsContent.forEach(({
     instance,
     data
   }) => {
-    console.log(`${instance} `, data[0]);
+    console.log(`${instance} `, data[0] || data[1]);
   });
 }
 
@@ -336,13 +336,13 @@ export async function logsNginx(api) {
 }
 
 export async function logsEb(api) {
-  const logsContent = await getLogs(api, ['eb-engine.log']);
+  const logsContent = await getLogs(api, ['eb-engine.log', 'eb-activity.log']);
 
   logsContent.forEach(({
     data,
     instance
   }) => {
-    console.log(`${instance} `, data[0]);
+    console.log(`${instance} `, data[0] || data[1]);
   });
 }
 
