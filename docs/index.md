@@ -39,6 +39,7 @@ module.exports = {
 ```
 
 Complete example:
+
 ```js
 module.exports = {
     app: {
@@ -162,6 +163,7 @@ AWS Elastic Beanstalk is free, but you do pay for the services it uses, includin
 - S3. 3 - 4 app bundles are stored on s3. Each deploy will make 2 list requests and upload 1 file. Beanstalk might store additional files on s3.
 
 Graceful Shutdown uses the following services:
+
 - Cloud Trail. The trail is stored in s3 and, according to their docs, usually costs less than $3 / month.
 
 ## Rolling Deploys
@@ -262,9 +264,11 @@ new DDPGracefulShutdown({
   server: Meteor.server,
 }).installSIGTERMHandler();
 ```
+
 `METEOR_SIGTERM_GRACE_PERIOD_SECONDS` is set to 30 seconds.
 
 In your config, set `app.gracefulShutdown` to `true`:
+
 ```js
 module.exports = {
     app: {
@@ -286,7 +290,11 @@ To help with debugging issues that happen in production mup-aws-beanstalk provid
 1) `mup beanstalk shell` to open a production Meteor shell. This is the same shell you get with `meteor shell`, but connected to your app running in Elastic Beanstalk. Your app must use the [`qualia:prod-shell`](https://github.com/qualialabs/prod-shell) or equivalent package
 2) `mup beanstalk debug` to allow connecting your local Node developer tools to the app running in production
 
-Both require the IAM user to have the `EC2InstanceConnect` policy. They also require adding the `app.sshKey` option to your mup config:
+Requirements:
+
+1) The IAM user to have the `EC2InstanceConnect` policy.
+2) The beanstalk environment should use a platform based on Amazon Linux 2. If mup-aws-beanstalk times out while trying to connect, the platform might be based on an older version of Amazon Linux.
+3) The `app.sshKey` option should be configured in your mup config:
 
 ```js
 module.exports = {
