@@ -246,7 +246,7 @@ export async function deploy(api) {
   const key = `${bundlePrefix}${nextVersion}`;
   await upload(config.app, bucket, `${bundlePrefix}${nextVersion}`, bundlePath);
 
-  logStep('=> Creating Version');
+  logStep('=> Creating version');
 
   await beanstalk.createApplicationVersion({
     ApplicationName: app,
@@ -463,7 +463,7 @@ export async function reconfig(api) {
   } = names(config);
   const deploying = !!api.commandHistory.find(entry => entry.name === 'beanstalk.deploy');
 
-  logStep('=> Configuring Beanstalk Environment');
+  logStep('=> Configuring Beanstalk environment');
 
   // check if env exists
   const {
@@ -743,7 +743,7 @@ export async function ssl(api) {
     });
   } else if (certificate.Status === 'ISSUED') {
     console.log(chalk.green('Certificate has been issued'));
-    logStep('=> Updating Beanstalk SSL Config');
+    logStep('=> Updating Beanstalk SSL config');
     await updateSSLConfig(config, certificateArn);
   }
 }

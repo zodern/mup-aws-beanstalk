@@ -83,7 +83,7 @@ async function checker(config, prop, wantedValue, showProgress) {
       if (value !== wantedValue && value !== lastStatus) {
         const text = prop === 'Health' ? `be ${wantedValue}` : `finish ${value}`;
 
-        logStep(`=> Waiting for Beanstalk Environment to ${text.toLocaleLowerCase()}`);
+        logStep(`=> Waiting for Beanstalk environment to ${text.toLocaleLowerCase()}`);
         lastStatus = value;
       } else if (value === wantedValue) {
         // TODO: run showEvents one last time
