@@ -1,5 +1,10 @@
 import { difference } from 'lodash';
+import { beanstalk } from './aws';
+import downloadEnvFile from './download';
+import { createEnvFile } from './env-settings';
+import { uploadEnvFile } from './upload';
 import { names } from './utils';
+import { largestEnvVersion } from './versions';
 
 export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   const {
@@ -207,6 +212,55 @@ export function diffConfig(current, desired) {
 
     return true;
   }).map(key => desired[key]);
+
+  return {
+    toRemove,
+    toUpdate
+  };
+}
+
+export async function prepareUpdateEnvironment(api) {
+  const config = api.getConfig();
+  const {
+    app,
+    environment,
+    bucket
+  } = names(config);
+  const {
+    ConfigurationSettings
+  } = await beanstalk.describeConfigurationSettings({
+    EnvironmentName: environment,
+    ApplicationName: app
+  }).promise();
+  const { longEnvVars } = config.app;
+  let nextEnvVersion = 0;
+  let envSettingsChanged;
+  let desiredSettings;
+
+  if (longEnvVars) {
+    const currentEnvVersion = await largestEnvVersion(api);
+    const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
+    desiredSettings = createEnvFile(config.app.env, api.getSettings());
+    envSettingsChanged = currentSettings !== desiredSettings;
+    if (envSettingsChanged) {
+      nextEnvVersion = currentEnvVersion + 1;
+      await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);
+    } else {
+      nextEnvVersion = currentEnvVersion;
+    }
+  }
+  const desiredEbConfig = createDesiredConfig(
+    api.getConfig(),
+    api.getSettings(),
+    nextEnvVersion
+  );
+  const {
+    toRemove,
+    toUpdate
+  } = diffConfig(
+    ConfigurationSettings[0].OptionSettings,
+    desiredEbConfig.OptionSettings
+  );
 
   return {
     toRemove,
