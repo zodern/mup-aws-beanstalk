@@ -70,7 +70,6 @@ async function checker(config, prop, wantedValue, showProgress) {
           ApplicationName: app
         }).promise();
       } catch (e) {
-        console.log('in check exception');
         if (checkForThrottlingException(e)) {
           handleThrottlingException();
           return setTimeout(check, getRecheckInterval());

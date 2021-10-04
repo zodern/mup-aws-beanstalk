@@ -56,7 +56,7 @@ import {
   oldVersions,
   oldEnvVersions
 } from './versions';
-
+import { createEnvFile } from './env-settings';
 import {
   createDesiredConfig,
   prepareUpdateEnvironment,
@@ -481,7 +481,9 @@ export async function reconfig(api) {
     );
 
     if (config.app.longEnvVars) {
-      await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
+      const envContent = createEnvFile(config.app.env, api.getSettings());
+
+      await uploadEnvFile(bucket, 1, envContent);
     }
 
     const platformArn = await selectPlatformArn();
