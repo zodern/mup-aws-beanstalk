@@ -4,7 +4,7 @@ export function getRecheckInterval() {
   if (throttlingExceptionCounter === 10) {
     throw new Error('Maximum throttling backoff exceeded');
   } else {
-    return (2 ** throttlingExceptionCounter * 5000);
+    return (2 ** throttlingExceptionCounter * 10000);
   }
 }
 

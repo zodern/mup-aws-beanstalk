@@ -15,11 +15,17 @@ export let ec2InstanceConnect = {};
 
 /* eslint-enable import/no-mutable-exports */
 
+const MAX_RETRY_DELAY = 1000 * 60 * 2;
+
 export default function configure({ auth, name, region }) {
   const options = {
     accessKeyId: auth.id,
     secretAccessKey: auth.secret,
-    region: region || 'us-east-1'
+    region: region || 'us-east-1',
+    maxRetries: 25,
+    retryDelayOptions: {
+      customBackoff: retryCount => Math.min((2 ** retryCount * 1000), MAX_RETRY_DELAY)
+    }
   };
 
   AWS.config.update(options);
