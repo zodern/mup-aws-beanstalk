@@ -1,4 +1,4 @@
-import { difference } from 'lodash';
+import difference from 'lodash.difference';
 import { beanstalk } from './aws';
 import downloadEnvFile from './download';
 import { createEnvFile } from './env-settings';

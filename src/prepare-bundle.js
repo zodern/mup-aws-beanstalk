@@ -1,7 +1,7 @@
 import archiver from 'archiver';
 import fs from 'fs';
 import ejs from 'ejs';
-import { round } from 'lodash';
+import round from 'lodash.round';
 import { getNodeVersion, logStep, names } from './utils';
 
 function copy(source, destination, vars = {}) {

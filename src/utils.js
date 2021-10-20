@@ -1,10 +1,10 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import fs from 'fs';
-import { isEqual } from 'lodash';
+import isEqual from 'lodash.isequal';
 import os from 'os';
 import random from 'random-seed';
-import uuid from 'uuid';
+import { v4 as uuidv4 } from 'uuid'
 import { execSync } from 'child_process';
 import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
 import { getRecheckInterval } from './recheck';
@@ -31,7 +31,7 @@ export function tmpBuildPath(appPath, api) {
 
   return api.resolvePath(
     os.tmpdir(),
-    `mup-meteor-${uuid.v4({ random: uuidNumbers })}`
+    `mup-meteor-${uuidv4({ random: uuidNumbers })}`
   );
 }
 
