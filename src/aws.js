@@ -24,7 +24,7 @@ export default function configure({ auth, name, region }) {
     region: region || 'us-east-1',
     maxRetries: 25,
     retryDelayOptions: {
-      customBackoff: retryCount => Math.min((2 ** retryCount * 1000), MAX_RETRY_DELAY)
+      customBackoff: (retryCount) => Math.min((2 ** retryCount * 1000), MAX_RETRY_DELAY)
     }
   };
 

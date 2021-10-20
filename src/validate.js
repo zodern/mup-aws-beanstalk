@@ -45,7 +45,7 @@ const schema = Joi.object().keys({
   }
 });
 
-export default function (config, utils) {
+export default function validator(config, utils) {
   let details = [];
   details = utils.combineErrorDetails(
     details,

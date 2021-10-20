@@ -7,7 +7,7 @@ export const commands = _commands;
 
 export const validate = {
   app(config, utils) {
-    if (config.app && config.app.type === 'aws-beanstalk') {
+    if (config.app?.type === 'aws-beanstalk') {
       return validator(config, utils);
     }
 
@@ -45,7 +45,7 @@ export function prepareConfig(config) {
 function isBeanstalkApp(api) {
   const config = api.getConfig();
 
-  if (config.app && config.app.type === 'aws-beanstalk') {
+  if (config.app?.type === 'aws-beanstalk') {
     return true;
   }
 

@@ -13,7 +13,7 @@ function copy(source, destination, vars = {}) {
       ...vars,
       padScript(content, spaces) {
         const padding = ''.padStart(spaces, ' ');
-        return content.split('\n').map(line => padding + line).join('\n');
+        return content.split('\n').map((line) => padding + line).join('\n');
       }
     },
     {
@@ -30,7 +30,7 @@ export function injectFiles(api, name, version, appConfig) {
     forceSSL,
     gracefulShutdown,
     buildOptions,
-    longEnvVars,
+    // longEnvVars,
     path
   } = appConfig;
   const bundlePath = buildOptions.buildLocation;
@@ -69,7 +69,6 @@ export function injectFiles(api, name, version, appConfig) {
       }
     }
   });
-
 
   // For some resources we make two copies of scripts:
   // 1) In .platform/hooks. These are used in AWS Linux 2

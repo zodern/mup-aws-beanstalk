@@ -1,7 +1,7 @@
 import difference from 'lodash.difference';
 import { beanstalk } from './aws';
 import downloadEnvFile from './download';
-import { createEnvFile } from './env-settings';
+import createEnvFile from './env-settings';
 import { uploadEnvFile } from './upload';
 import { names } from './utils';
 import { largestEnvVersion } from './versions';
@@ -123,7 +123,7 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
     });
   }
 
-  const customOptions = customBeanstalkConfig.map(option => ({
+  const customOptions = customBeanstalkConfig.map((option) => ({
     Namespace: option.namespace,
     OptionName: option.option,
     Value: option.value
@@ -153,8 +153,8 @@ export function scalingConfigChanged(currentConfig, mupConfig) {
     }
   });
 
-  return currentMinInstances !== minInstances.toString() ||
-    currentMaxInstances !== maxInstances.toString();
+  return currentMinInstances !== minInstances.toString()
+    || currentMaxInstances !== maxInstances.toString();
 }
 
 export function scalingConfig({ minInstances, maxInstances }) {
@@ -196,7 +196,7 @@ export function diffConfig(current, desired) {
   desired = desired.reduce(convertToObject, {});
 
   const toRemove = difference(Object.keys(current), Object.keys(desired))
-    .filter(key => key.indexOf('aws:elasticbeanstalk:application:environment-') === 0)
+    .filter((key) => key.indexOf('aws:elasticbeanstalk:application:environment-') === 0)
     .map((key) => {
       const option = current[key];
       return {
@@ -211,7 +211,7 @@ export function diffConfig(current, desired) {
     }
 
     return true;
-  }).map(key => desired[key]);
+  }).map((key) => desired[key]);
 
   return {
     toRemove,

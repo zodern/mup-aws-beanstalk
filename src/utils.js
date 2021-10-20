@@ -4,9 +4,11 @@ import fs from 'fs';
 import isEqual from 'lodash.isequal';
 import os from 'os';
 import random from 'random-seed';
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuidv4 } from 'uuid';
 import { execSync } from 'child_process';
-import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
+import {
+  beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect
+} from './aws';
 import { getRecheckInterval } from './recheck';
 
 export function logStep(message) {
@@ -76,7 +78,7 @@ async function retrieveEnvironmentInfo(api, count) {
 
   if (EnvironmentInfo.length > 0) {
     return EnvironmentInfo;
-  } else if (count > 5) {
+  } if (count > 5) {
     throw new Error('No logs');
   }
 
@@ -114,24 +116,22 @@ export async function getLogs(api, logNames) {
     return result;
   }, {});
 
-  return Promise.all(Object.keys(logsForServer).map(key =>
-    new Promise((resolve, reject) => {
-      axios.get(logsForServer[key]).then(({ data }) => {
-        // The separator changed with Amazon Linux 2
-        let parts = data.split('----------------------------------------\n/var/log/');
-        if (parts.length === 1) {
-          parts = data.split('-------------------------------------\n/var/log/');
-        }
+  return Promise.all(Object.keys(logsForServer).map((key) => new Promise((resolve, reject) => {
+    axios.get(logsForServer[key]).then(({ data }) => {
+      // The separator changed with Amazon Linux 2
+      let parts = data.split('----------------------------------------\n/var/log/');
+      if (parts.length === 1) {
+        parts = data.split('-------------------------------------\n/var/log/');
+      }
 
-        data = logNames.map(name =>
-          parts.find(part => part.trim().startsWith(name)));
+      data = logNames.map((name) => parts.find((part) => part.trim().startsWith(name)));
 
-        resolve({
-          data,
-          instance: key
-        });
-      }).catch(reject);
-    })));
+      resolve({
+        data,
+        instance: key
+      });
+    }).catch(reject);
+  })));
 }
 
 export function getNodeVersion(api, bundlePath) {
@@ -239,7 +239,6 @@ export async function ensureRoleExists(name, assumeRolePolicyDocument, ensureAss
       RoleName: name
     }).promise();
 
-
     const currentAssumeRolePolicy = decodeURIComponent(Role.AssumeRolePolicyDocument);
     // Make the whitespace consistent with the current document
     assumeRolePolicyDocument = JSON.stringify(JSON.parse(assumeRolePolicyDocument));
@@ -285,7 +284,6 @@ export async function ensureInstanceProfileExists(config, name) {
 export async function ensureRoleAdded(config, instanceProfile, role) {
   let added = true;
 
-
   const {
     InstanceProfile
   } = await iam.getInstanceProfile({
@@ -311,7 +309,7 @@ export async function ensurePoliciesAttached(config, role, policies) {
     RoleName: role
   }).promise();
 
-  AttachedPolicies = AttachedPolicies.map(policy => policy.PolicyArn);
+  AttachedPolicies = AttachedPolicies.map((policy) => policy.PolicyArn);
 
   const unattachedPolicies = policies.reduce((result, policy) => {
     if (AttachedPolicies.indexOf(policy) === -1) {
@@ -354,7 +352,7 @@ export async function ensureInlinePolicyAttached(role, policyName, policyDocumen
 }
 
 export async function ensureBucketExists(buckets, bucketName, region) {
-  if (!buckets.find(bucket => bucket.Name === bucketName)) {
+  if (!buckets.find((bucket) => bucket.Name === bucketName)) {
     await s3.createBucket({
       Bucket: bucketName,
       ...(region ? {
@@ -369,7 +367,7 @@ export async function ensureBucketExists(buckets, bucketName, region) {
 }
 
 export function findBucketWithPrefix(buckets, prefix) {
-  return buckets.find(bucket => bucket.Name.indexOf(prefix) === 0);
+  return buckets.find((bucket) => bucket.Name.indexOf(prefix) === 0);
 }
 
 export async function ensureBucketPolicyAttached(bucketName, policy) {
@@ -422,7 +420,7 @@ export async function ensureRuleTargetExists(ruleName, target) {
     Rule: ruleName
   }).promise();
 
-  if (!Targets.find(_target => isEqual(_target, target))) {
+  if (!Targets.find((_target) => isEqual(_target, target))) {
     const params = {
       Rule: ruleName,
       Targets: [target]
@@ -436,9 +434,9 @@ export async function ensureRuleTargetExists(ruleName, target) {
 export function coloredStatusText(envColor, text) {
   if (envColor === 'Green') {
     return chalk.green(text);
-  } else if (envColor === 'Yellow') {
+  } if (envColor === 'Yellow') {
     return chalk.yellow(text);
-  } else if (envColor === 'Red') {
+  } if (envColor === 'Red') {
     return chalk.red(text);
   }
   return text;
@@ -483,7 +481,7 @@ export async function ensureSsmDocument(name, content) {
     }).promise();
 
     return true;
-  } else if (needsUpdating) {
+  } if (needsUpdating) {
     try {
       await ssm.updateDocument({
         Content: content,
@@ -518,7 +516,7 @@ export async function pickInstance(config, instance) {
   const instanceIds = EnvironmentResources.Instances.map(({ Id }) => Id);
   const description = [
     'Available instances',
-    ...instanceIds.map(id => `  - ${id}`)
+    ...instanceIds.map((id) => `  - ${id}`)
   ].join('\n');
 
   return {

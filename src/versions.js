@@ -43,7 +43,6 @@ export async function s3Versions(api, prefix) {
     Prefix: prefix
   }).promise();
 
-
   if (uploadedBundles.Contents.length > 0) {
     uploadedBundles.Contents.forEach((bundle) => {
       const bundleVersion = parseInt(bundle.Key.split(prefix)[1], 10);
@@ -79,7 +78,6 @@ export async function largestEnvVersion(api) {
     Bucket: bucketName,
     Prefix: prefix
   }).promise();
-
 
   if (uploadedBundles.Contents.length > 0) {
     uploadedBundles.Contents.forEach((bundle) => {
