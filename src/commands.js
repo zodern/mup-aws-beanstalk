@@ -61,7 +61,6 @@ export const logsEb = {
   handler: prepare(commandHandlers.logsEb)
 };
 
-
 export const start = {
   description: 'Start app',
   handler: prepare(commandHandlers.start)

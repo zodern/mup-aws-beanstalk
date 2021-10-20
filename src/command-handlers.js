@@ -56,7 +56,7 @@ import {
   oldVersions,
   oldEnvVersions
 } from './versions';
-import { createEnvFile } from './env-settings';
+import createEnvFile from './env-settings';
 import {
   createDesiredConfig,
   prepareUpdateEnvironment,
@@ -136,7 +136,7 @@ export async function setup(api) {
     Applications
   } = await beanstalk.describeApplications().promise();
 
-  if (!Applications.find(app => app.ApplicationName === appName)) {
+  if (!Applications.find((app) => app.ApplicationName === appName)) {
     const params = {
       ApplicationName: appName,
       Description: `App "${appConfig.name}" managed by Meteor Up`
@@ -150,9 +150,9 @@ export async function setup(api) {
     logStep('=> Ensuring Graceful Shutdown is setup');
 
     const existingBucket = findBucketWithPrefix(Buckets, trailBucketPrefix);
-    const trailBucketName = existingBucket ?
-      existingBucket.Name :
-      createUniqueName(trailBucketPrefix);
+    const trailBucketName = existingBucket
+      ? existingBucket.Name
+      : createUniqueName(trailBucketPrefix);
     const region = appConfig.region || 'us-east-1';
     const accountId = await getAccountId();
     const policy = trailBucketPolicy(accountId, trailBucketName);
@@ -219,13 +219,12 @@ export async function deploy(api) {
     environment
   } = names(config);
 
-
   const version = await largestVersion(api);
   const nextVersion = version + 1;
 
   // Mutates the config, so the meteor.build command will have the correct build location
-  config.app.buildOptions.buildLocation = config.app.buildOptions.buildLocation ||
-    tmpBuildPath(config.app.path, api);
+  config.app.buildOptions.buildLocation = config.app.buildOptions.buildLocation
+    || tmpBuildPath(config.app.path, api);
 
   const bundlePath = api.resolvePath(config.app.buildOptions.buildLocation, 'bundle.zip');
   const willBuild = shouldRebuild(bundlePath, api.getOptions()['cached-build']);
@@ -461,7 +460,7 @@ export async function reconfig(api) {
     environment,
     bucket
   } = names(config);
-  const deploying = !!api.commandHistory.find(entry => entry.name === 'beanstalk.deploy');
+  const deploying = !!api.commandHistory.find((entry) => entry.name === 'beanstalk.deploy');
 
   logStep('=> Configuring Beanstalk environment');
 
@@ -473,7 +472,7 @@ export async function reconfig(api) {
     EnvironmentNames: [environment]
   }).promise();
 
-  if (!Environments.find(env => env.Status !== 'Terminated')) {
+  if (!Environments.find((env) => env.Status !== 'Terminated')) {
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
       api.getSettings(),
@@ -556,7 +555,7 @@ export async function events(api) {
     EnvironmentName: environment
   }).promise();
 
-  console.log(envEvents.map(ev => `${ev.EventDate}: ${ev.Message}`).join('\n'));
+  console.log(envEvents.map((ev) => `${ev.EventDate}: ${ev.Message}`).join('\n'));
 }
 
 export async function status(api) {
@@ -602,7 +601,7 @@ export async function status(api) {
   console.log(`Health Status: ${coloredStatusText(result.Color, result.HealthStatus)}`);
   if (result.Causes.length > 0) {
     console.log('Causes: ');
-    result.Causes.forEach(cause => console.log(`  ${cause}`));
+    result.Causes.forEach((cause) => console.log(`  ${cause}`));
   }
   console.log('');
   console.log(`=== Metrics For Last ${Duration || 'Unknown'} Minutes ===`);
