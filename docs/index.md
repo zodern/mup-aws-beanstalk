@@ -320,6 +320,12 @@ AWS Elastic Beanstalk requires doing a [blue/green deployment] to update to Amaz
 3) [Swap the CNAME between the old and new environment](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.CNAMESwap.html). This will move traffic to the new environment
 4) Once the old environment is no longer being used, you can terminate it
 
+## Custom `.ebextensions`
+
+You can create a `.ebextensions` folder to further customize the Elastic Beanstalk environment. More details are in [Elastic Beanstalk's docs](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/ebextensions.html).
+
+mup-aws-beanstalk copies your app's `.ebextensions` folder into the app bundle when deploying your app.
+
 ## Troubleshooting
 
 - View the logs with `mup logs` or from the AWS Console
