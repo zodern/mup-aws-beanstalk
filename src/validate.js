@@ -1,9 +1,10 @@
-import joi from 'joi';
+import joi from '@hapi/joi';
 
 const schema = joi.object().keys({
   name: joi.string().min(1).required(),
   path: joi.string().min(1).required(),
   type: joi.string().required(),
+  envName: joi.string().min(1),
   buildOptions: joi.object().keys({
     serverOnly: joi.bool(),
     debug: joi.bool(),
@@ -37,7 +38,11 @@ const schema = joi.object().keys({
     namespace: joi.string().trim().required(),
     option: joi.string().trim().required(),
     value: joi.string().trim().required()
-  }))
+  })),
+  sshKey: {
+    privateKey: joi.string().required(),
+    publicKey: joi.string().required()
+  }
 });
 
 export default function (config, utils) {

@@ -2,7 +2,6 @@
   "name": "<%= name %>",
   "version": "<%= version %>.0.0",
   "scripts": {
-    "preinstall": "cd programs/server && npm install",
     "start": "bash ./start.sh"
   }
 }

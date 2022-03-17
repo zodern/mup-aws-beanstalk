@@ -5,17 +5,4 @@ files:
         owner: root
         group: users
         content: |
-            #!/bin/bash
-
-            NODE_VERSION=<%= nodeVersion %>
-            NPM_VERSION=<%= npmVersion %>
-
-            # Install nvm
-            curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.6/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-            nvm install $NODE_VERSION
-            nvm use $NODE_VERSION
-            nvm alias default $NODE_VERSION
-            npm i -g npm@$NPM_VERSION
+<%- padScript(include('./node.sh'), 12) %>

@@ -1,3 +1,5 @@
+# Getting Started with mup-aws-beanstalk
+
 ## Install
 
 You can install `mup` and `mup-aws-beanstalk` by running
@@ -12,7 +14,7 @@ The AWS Beanstalk plugin requires Node 4 or newer and Meteor Up 1.3.5 or newer.
 
 In the terminal, run
 
-```
+```bash
 cd path/to/app
 mkdir .deploy && cd .deploy
 mup init
@@ -46,6 +48,7 @@ module.exports = {
 ```
 
 You will want to modify:
+
 1) The app name. It must be at least 4 characters
 2) `app.env.ROOT_URL`
 3) `app.env.MONGO_URL` You will need to get a database from mLab, Compose, or another DBaaS provider
@@ -64,16 +67,18 @@ You can select `Add user to group` and create a new group. The group should have
 - `AWSElasticBeanstalkFullAccess`
 - `IAMFullAccess` This is used to create the roles and Instance Profiles needed by Elastic Beanstalk. After the first deploy, you can replace it with `IAMReadOnlyAccess`
 - `AWSCertificateManagerFullAccess` Used to create and manage SSL certificates for the app
+- `EC2InstanceConnect` is optional. Used when accessing a production Meteor shell or to connect your node developer tools to the app running in Elastic Beanstalk
+
+- ec2fullaccess
 
 In your mup config, set `app.auth.id` to the Access Key ID, and `app.auth.secret` to the Secret access key AWS gives you after creating the user.
- 
+
 ## Step 4: Deploy
 
 Simply run:
 
-```
+```bash
 mup deploy
 ```
 
 It will setup and deploy your app.
-

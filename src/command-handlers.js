@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { Client } from 'ssh2';
 import {
   acm,
   s3,
@@ -43,21 +44,23 @@ import {
   ensureInlinePolicyAttached,
   findBucketWithPrefix,
   createUniqueName,
-  checkLongEnvSafe,
   createVersionDescription,
-  ensureSsmDocument
+  ensureSsmDocument,
+  selectPlatformArn,
+  pickInstance,
+  connectToInstance,
+  executeSSHCommand
 } from './utils';
 import {
   largestVersion,
-  largestEnvVersion,
   ebVersions,
   oldVersions,
   oldEnvVersions
 } from './versions';
-
+import { createEnvFile } from './env-settings';
 import {
   createDesiredConfig,
-  diffConfig,
+  prepareUpdateEnvironment,
   scalingConfig,
   scalingConfigChanged
 } from './eb-config';
@@ -248,7 +251,7 @@ export async function deploy(api) {
   const key = `${bundlePrefix}${nextVersion}`;
   await upload(config.app, bucket, `${bundlePrefix}${nextVersion}`, bundlePath);
 
-  logStep('=> Creating Version');
+  logStep('=> Creating version');
 
   await beanstalk.createApplicationVersion({
     ApplicationName: app,
@@ -261,12 +264,28 @@ export async function deploy(api) {
   }).promise();
 
   await api.runCommand('beanstalk.reconfig');
+  await waitForEnvReady(config, true);
 
   logStep('=> Deploying new version');
 
+  const {
+    toRemove,
+    toUpdate
+  } = await prepareUpdateEnvironment(api);
+
+  if (api.verbose) {
+    console.log('EB Config changes:');
+    console.dir({
+      toRemove,
+      toUpdate
+    });
+  }
+
   await beanstalk.updateEnvironment({
     EnvironmentName: environment,
-    VersionLabel: nextVersion.toString()
+    VersionLabel: nextVersion.toString(),
+    OptionSettings: toUpdate,
+    OptionsToRemove: toRemove
   }).promise();
 
   await waitForEnvReady(config, true);
@@ -278,67 +297,57 @@ export async function deploy(api) {
     EnvironmentNames: [environment]
   }).promise();
 
-  console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
-
   await api.runCommand('beanstalk.clean');
 
   await api.runCommand('beanstalk.ssl');
 
-  if (config.app.longEnvVars) {
-    const {
-      ConfigurationSettings
-    } = await beanstalk.describeConfigurationSettings({
-      EnvironmentName: environment,
-      ApplicationName: app
-    }).promise();
+  // Check if deploy succeeded
+  const {
+    Environments: finalEnvironments
+  } = await beanstalk.describeEnvironments({
+    ApplicationName: app,
+    EnvironmentNames: [environment]
+  }).promise();
 
-    const {
-      migrated
-    } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
-
-    if (!migrated) {
-      // We know the bundle now supports longEnvVars, so it is safe to migrate
-      await api.runCommand('beanstalk.reconfig');
-    }
+  if (nextVersion.toString() === finalEnvironments[0].VersionLabel) {
+    console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
+  } else {
+    console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
+    process.exitCode = 1;
   }
 }
 
 export async function logs(api) {
-  const logsContent = await getLogs(api);
-
-  logsContent.forEach(({
-    data,
-    instance
-  }) => {
-    data = data.split('-------------------------------------\n/var/log/');
-    process.stdout.write(`${instance} `);
-    process.stdout.write(data[1]);
-  });
-}
-
-export async function logsNginx(api) {
-  const logsContent = await getLogs(api);
+  const logsContent = await getLogs(api, ['web.stdout.log', 'nodejs/nodejs.log']);
 
   logsContent.forEach(({
     instance,
     data
   }) => {
-    data = data.split('-------------------------------------\n/var/log/');
-    console.log(`${instance} `, data[2]);
-    console.log(`${instance} `, data[4]);
+    console.log(`${instance} `, data[0] || data[1]);
+  });
+}
+
+export async function logsNginx(api) {
+  const logsContent = await getLogs(api, ['nginx/error.log', 'nginx/access.log']);
+
+  logsContent.forEach(({
+    instance,
+    data
+  }) => {
+    console.log(`${instance} `, data[0]);
+    console.log(`${instance} `, data[1]);
   });
 }
 
 export async function logsEb(api) {
-  const logsContent = await getLogs(api);
+  const logsContent = await getLogs(api, ['eb-engine.log', 'eb-activity.log']);
 
   logsContent.forEach(({
     data,
     instance
   }) => {
-    data = data.split('\n\n\n-------------------------------------\n/var/log/');
-    process.stdout.write(`${instance} `);
-    process.stdout.write(data[2]);
+    console.log(`${instance} `, data[0] || data[1]);
   });
 }
 
@@ -457,8 +466,9 @@ export async function reconfig(api) {
     environment,
     bucket
   } = names(config);
+  const deploying = !!api.commandHistory.find(entry => entry.name === 'beanstalk.deploy');
 
-  logStep('=> Configuring Beanstalk Environment');
+  logStep('=> Configuring Beanstalk environment');
 
   // check if env exists
   const {
@@ -476,13 +486,12 @@ export async function reconfig(api) {
     );
 
     if (config.app.longEnvVars) {
-      await uploadEnvFile(bucket, 1, config.app.env, api.getSettings());
+      const envContent = createEnvFile(config.app.env, api.getSettings());
+
+      await uploadEnvFile(bucket, 1, envContent);
     }
 
-    const {
-      SolutionStacks
-    } = await beanstalk.listAvailableSolutionStacks().promise();
-    const solutionStack = SolutionStacks.find(name => name.endsWith('running Node.js'));
+    const platformArn = await selectPlatformArn();
 
     const [version] = await ebVersions(api);
     await beanstalk.createEnvironment({
@@ -490,62 +499,30 @@ export async function reconfig(api) {
       EnvironmentName: environment,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
-      SolutionStackName: solutionStack,
+      PlatformArn: platformArn,
       OptionSettings: desiredEbConfig.OptionSettings
     }).promise();
 
     console.log(' Created Environment');
     await waitForEnvReady(config, false);
-  } else {
-    const {
-      ConfigurationSettings
-    } = await beanstalk.describeConfigurationSettings({
-      EnvironmentName: environment,
-      ApplicationName: app
-    }).promise();
-    const {
-      enabled: longEnvEnabled,
-      safeToReconfig
-    } = checkLongEnvSafe(ConfigurationSettings, api.commandHistory, config.app);
-    let nextEnvVersion = 0;
-    let envSettingsChanged;
-    let desiredSettings;
-    if (safeToReconfig) {
-      const currentEnvVersion = await largestEnvVersion(api);
-      const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
-      desiredSettings = createEnvFile(config.app.env, api.getSettings())
-      envSettingsChanged = currentSettings !== desiredSettings
-      if (envSettingsChanged) {
-        nextEnvVersion = currentEnvVersion + 1;
-      } else {
-        nextEnvVersion = currentEnvVersion;
-      }
-    }
-    const desiredEbConfig = createDesiredConfig(
-      api.getConfig(),
-      api.getSettings(),
-      safeToReconfig ? nextEnvVersion : 0
-    );
+  } else if (!deploying) {
+    // If we are deploying, the environment will be updated
+    // at the same time we update the environment version
     const {
       toRemove,
       toUpdate
-    } = diffConfig(
-      ConfigurationSettings[0].OptionSettings,
-      desiredEbConfig.OptionSettings
-    );
+    } = await prepareUpdateEnvironment(api);
 
-    if (longEnvEnabled) {
-      if (envSettingsChanged) {
-        await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);
-      }
-      if (!safeToReconfig) {
-        // Reconfig will be run again after deploy to migrate.
-        // This way we know the bundle includes the necessary files
-        return;
-      }
+    if (api.verbose) {
+      console.log('EB Config changes:');
+      console.dir({
+        toRemove,
+        toUpdate
+      });
     }
 
     if (toRemove.length > 0 || toUpdate.length > 0) {
+      await waitForEnvReady(config, true);
       await beanstalk.updateEnvironment({
         EnvironmentName: environment,
         OptionSettings: toUpdate,
@@ -592,12 +569,24 @@ export async function status(api) {
     environment
   } = names(api.getConfig());
 
-  const result = await beanstalk.describeEnvironmentHealth({
-    AttributeNames: [
-      'All'
-    ],
-    EnvironmentName: environment
-  }).promise();
+  let result;
+
+  try {
+    result = await beanstalk.describeEnvironmentHealth({
+      AttributeNames: [
+        'All'
+      ],
+      EnvironmentName: environment
+    }).promise();
+  } catch (e) {
+    if (e.message.includes('No Environment found for EnvironmentName')) {
+      console.log(' AWS Beanstalk environment does not exist');
+      return;
+    }
+
+    throw e;
+  }
+
   const {
     InstanceHealthList
   } = await beanstalk.describeInstancesHealth({
@@ -653,6 +642,8 @@ export async function status(api) {
 
 export async function ssl(api) {
   const config = api.getConfig();
+
+  await waitForEnvReady(config, true);
 
   if (!config.app || !config.app.sslDomains) {
     logStep('=> Updating Beanstalk SSL Config');
@@ -759,7 +750,125 @@ export async function ssl(api) {
     });
   } else if (certificate.Status === 'ISSUED') {
     console.log(chalk.green('Certificate has been issued'));
-    logStep('=> Updating Beanstalk SSL Config');
+    logStep('=> Updating Beanstalk SSL config');
     await updateSSLConfig(config, certificateArn);
   }
+}
+
+export async function shell(api) {
+  const {
+    selected,
+    description
+  } = await pickInstance(api.getConfig(), api.getArgs()[2]);
+
+  if (!selected) {
+    console.log(description);
+    console.log('Run "mup beanstalk shell <instance id>"');
+    process.exitCode = 1;
+
+    return;
+  }
+
+  const sshOptions = await connectToInstance(api, selected);
+
+  const conn = new Client();
+  conn.on('ready', () => {
+    conn.exec('sudo node /home/webapp/meteor-shell.js', {
+      pty: true
+    }, (err, stream) => {
+      if (err) {
+        throw err;
+      }
+      stream.on('close', () => {
+        conn.end();
+        process.exit();
+      });
+
+      process.stdin.setRawMode(true);
+      process.stdin.pipe(stream);
+
+      stream.pipe(process.stdout);
+      stream.stderr.pipe(process.stderr);
+      stream.setWindow(process.stdout.rows, process.stdout.columns);
+
+      process.stdout.on('resize', () => {
+        stream.setWindow(process.stdout.rows, process.stdout.columns);
+      });
+    });
+  }).connect(sshOptions);
+}
+
+export async function debug(api) {
+  const config = api.getConfig();
+  const {
+    selected,
+    description
+  } = await pickInstance(config, api.getArgs()[2]);
+
+  if (!selected) {
+    console.log(description);
+    console.log('Run "mup beanstalk debug <instance id>"');
+    process.exitCode = 1;
+
+    return;
+  }
+
+  const sshOptions = await connectToInstance(api, selected);
+
+  const conn = new Client();
+  conn.on('ready', async () => {
+    const result = await executeSSHCommand(
+      conn,
+      'sudo pkill -USR1 -u webapp -n node || sudo pkill -USR1 -u nodejs -n node'
+    );
+
+    if (api.verbose) {
+      console.log(result.output);
+    }
+
+    const server = {
+      ...sshOptions,
+      pem: api.resolvePath(config.app.sshKey.privateKey)
+    };
+
+    let loggedConnection = false;
+
+    api.forwardPort({
+      server,
+      localAddress: '0.0.0.0',
+      localPort: 9229,
+      remoteAddress: '127.0.0.1',
+      remotePort: 9229,
+      onError(error) {
+        console.error(error);
+      },
+      onReady() {
+        console.log('Connected to server');
+        console.log('');
+        console.log('Debugger listening on ws://127.0.0.1:9229');
+        console.log('');
+        console.log('To debug:');
+        console.log('1. Open chrome://inspect in Chrome');
+        console.log('2. Select "Open dedicated DevTools for Node"');
+        console.log('3. Wait a minute while it connects and loads the app.');
+        console.log('   When it is ready, the app\'s files will appear in the Sources tab');
+        console.log('');
+        console.log('Warning: Do not use breakpoints when debugging a production server.');
+        console.log('They will pause your server when hit, causing it to not handle methods or subscriptions.');
+        console.log('Use logpoints or something else that does not pause the server');
+        console.log('');
+        console.log('The debugger will be enabled until the next time the app is restarted,');
+        console.log('though only accessible while this command is running');
+      },
+      onConnection() {
+        if (!loggedConnection) {
+          // It isn't guaranteed the debugger is connected, but not many
+          // other tools will try to connect to port 9229.
+          console.log('');
+          console.log('Detected by debugger');
+          loggedConnection = true;
+        }
+      }
+    });
+  }).connect(sshOptions);
 }

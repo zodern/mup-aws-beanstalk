@@ -6,7 +6,7 @@ import os from 'os';
 import random from 'random-seed';
 import uuid from 'uuid';
 import { execSync } from 'child_process';
-import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm } from './aws';
+import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
 import { getRecheckInterval } from './recheck';
 
 export function logStep(message) {
@@ -40,7 +40,7 @@ export function names(config) {
 
   return {
     bucket: `mup-${name}`,
-    environment: `mup-env-${name}`,
+    environment: config.app.envName || `mup-env-${name}`,
     app: `mup-${name}`,
     bundlePrefix: `mup/bundles/${name}/`,
     instanceProfile: 'aws-elasticbeanstalk-ec2-role',
@@ -91,7 +91,7 @@ async function retrieveEnvironmentInfo(api, count) {
   });
 }
 
-export async function getLogs(api) {
+export async function getLogs(api, logNames) {
   const config = api.getConfig();
   const {
     environment
@@ -117,6 +117,15 @@ export async function getLogs(api) {
   return Promise.all(Object.keys(logsForServer).map(key =>
     new Promise((resolve, reject) => {
       axios.get(logsForServer[key]).then(({ data }) => {
+        // The separator changed with Amazon Linux 2
+        let parts = data.split('----------------------------------------\n/var/log/');
+        if (parts.length === 1) {
+          parts = data.split('-------------------------------------\n/var/log/');
+        }
+
+        data = logNames.map(name =>
+          parts.find(part => part.trim().startsWith(name)));
+
         resolve({
           data,
           instance: key
@@ -151,6 +160,53 @@ export function getNodeVersion(api, bundlePath) {
     nodeVersion,
     npmVersion: '3.10.5'
   };
+}
+
+export async function selectPlatformArn() {
+  const {
+    PlatformBranchSummaryList
+  } = await beanstalk.listPlatformBranches({
+    Filters: [{
+      Attribute: 'LifecycleState',
+      Operator: '=',
+      Values: ['supported']
+    }, {
+      Attribute: 'PlatformName',
+      Operator: '=',
+      Values: ['Node.js']
+    }, {
+      Attribute: 'TierType',
+      Operator: '=',
+      Values: ['WebServer/Standard']
+    }]
+  }).promise();
+
+  if (PlatformBranchSummaryList.length === 0) {
+    throw new Error('Unable to find supported Node.js platform');
+  }
+
+  const branchName = PlatformBranchSummaryList[0].BranchName;
+
+  const {
+    PlatformSummaryList
+  } = await beanstalk.listPlatformVersions({
+    Filters: [
+      {
+        Type: 'PlatformBranchName',
+        Operator: '=',
+        Values: [branchName]
+      },
+      {
+        Type: 'PlatformStatus',
+        Operator: '=',
+        Values: ['Ready']
+      }
+    ]
+  }).promise();
+
+  const arn = PlatformSummaryList[0].PlatformArn;
+
+  return arn;
 }
 
 export async function attachPolicies(config, roleName, policies) {
@@ -388,22 +444,6 @@ export function coloredStatusText(envColor, text) {
   return text;
 }
 
-
-// Checks if it is safe to use the environment variables from s3
-export function checkLongEnvSafe(currentConfig, commandHistory, appConfig) {
-  const optionEnabled = appConfig.longEnvVars;
-  const previouslyMigrated = currentConfig[0].OptionSettings.find(({ Namespace, OptionName }) => Namespace === 'aws:elasticbeanstalk:application:environment' &&
-      OptionName === 'MUP_ENV_FILE_VERSION');
-  const reconfigCount = commandHistory.filter(({ name }) => name === 'beanstalk.reconfig').length;
-  const ranDeploy = commandHistory.find(({ name }) => name === 'beanstalk.deploy') && reconfigCount > 1;
-
-  return {
-    migrated: previouslyMigrated,
-    safeToReconfig: optionEnabled && (previouslyMigrated || ranDeploy),
-    enabled: optionEnabled
-  };
-}
-
 export function createVersionDescription(api, appConfig) {
   const appPath = api.resolvePath(api.getBasePath(), appConfig.path);
   let description = '';
@@ -424,7 +464,7 @@ export async function ensureSsmDocument(name, content) {
   let needsUpdating = false;
 
   try {
-    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$DEFAULT' }).promise();
     // If the document was created or edited on the AWS console, there is extra new
     // line characters and whitespace
     const currentContent = JSON.stringify(JSON.parse(result.Content.replace(/\r?\n|\r/g, '')));
@@ -444,10 +484,102 @@ export async function ensureSsmDocument(name, content) {
 
     return true;
   } else if (needsUpdating) {
-    await ssm.updateDocument({
-      Content: content,
-      Name: name,
-      DocumentVersion: '$LATEST'
+    try {
+      await ssm.updateDocument({
+        Content: content,
+        Name: name,
+        DocumentVersion: '$LATEST'
+      }).promise();
+    } catch (e) {
+      // If the latest document version has the correct content
+      // then it must not be the default version. Ignore the error
+      // so we can fix the default version
+      if (e.code !== 'DuplicateDocumentContent') {
+        throw e;
+      }
+    }
+
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    await ssm.updateDocumentDefaultVersion({
+      DocumentVersion: result.DocumentVersion,
+      Name: name
     }).promise();
   }
+}
+
+export async function pickInstance(config, instance) {
+  const {
+    environment
+  } = names(config);
+
+  const { EnvironmentResources } = await beanstalk.describeEnvironmentResources({
+    EnvironmentName: environment
+  }).promise();
+  const instanceIds = EnvironmentResources.Instances.map(({ Id }) => Id);
+  const description = [
+    'Available instances',
+    ...instanceIds.map(id => `  - ${id}`)
+  ].join('\n');
+
+  return {
+    selected: instanceIds.includes(instance) ? instance : null,
+    description
+  };
+}
+
+export async function connectToInstance(api, instanceId) {
+  const {
+    sshKey
+  } = api.getConfig().app;
+
+  const { Reservations } = await ec2.describeInstances({
+    InstanceIds: [
+      instanceId
+    ]
+  }).promise();
+
+  const instance = Reservations[0].Instances[0];
+  const availabilityZone = instance.Placement.AvailabilityZone;
+
+  await ec2InstanceConnect.sendSSHPublicKey({
+    InstanceId: instanceId,
+    AvailabilityZone: availabilityZone,
+    InstanceOSUser: 'ec2-user',
+    SSHPublicKey: fs.readFileSync(api.resolvePath(sshKey.publicKey), 'utf-8')
+  }).promise();
+
+  return {
+    host: instance.PublicDnsName,
+    port: 22,
+    username: 'ec2-user',
+    privateKey: fs.readFileSync(api.resolvePath(sshKey.privateKey), 'utf-8')
+  };
+}
+
+export async function executeSSHCommand(conn, command) {
+  return new Promise((resolve, reject) => {
+    conn.exec(command, (err, outputStream) => {
+      if (err) {
+        conn.end();
+        reject(err);
+
+        return;
+      }
+
+      let output = '';
+
+      outputStream.on('data', (data) => {
+        output += data;
+      });
+
+      outputStream.stderr.on('data', (data) => {
+        output += data;
+      });
+
+      outputStream.once('close', (code) => {
+        conn.end();
+        resolve({ code, output });
+      });
+    });
+  });
 }

@@ -2,9 +2,7 @@ import {
   logStep,
   names
 } from './utils';
-import {
-  beanstalk
-} from './aws';
+import { beanstalk } from './aws';
 import {
   getRecheckInterval,
   checkForThrottlingException,
@@ -72,7 +70,6 @@ async function checker(config, prop, wantedValue, showProgress) {
           ApplicationName: app
         }).promise();
       } catch (e) {
-        console.log('in check exception');
         if (checkForThrottlingException(e)) {
           handleThrottlingException();
           return setTimeout(check, getRecheckInterval());
@@ -85,7 +82,7 @@ async function checker(config, prop, wantedValue, showProgress) {
       if (value !== wantedValue && value !== lastStatus) {
         const text = prop === 'Health' ? `be ${wantedValue}` : `finish ${value}`;
 
-        logStep(`=> Waiting for Beanstalk Environment to ${text.toLocaleLowerCase()}`);
+        logStep(`=> Waiting for Beanstalk environment to ${text.toLocaleLowerCase()}`);
         lastStatus = value;
       } else if (value === wantedValue) {
         // TODO: run showEvents one last time

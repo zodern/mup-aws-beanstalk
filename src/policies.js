@@ -129,6 +129,7 @@ export const gracefulShutdownAutomationDocument = () => {
       {
         name: 'runCommand',
         action: 'aws:runCommand',
+        timeoutSeconds: 10,
         inputs: {
           DocumentName: 'AWS-RunShellScript',
           InstanceIds: '{{ InstanceId }}',

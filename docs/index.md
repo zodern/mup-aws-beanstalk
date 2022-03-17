@@ -39,6 +39,7 @@ module.exports = {
 ```
 
 Complete example:
+
 ```js
 module.exports = {
     app: {
@@ -74,6 +75,10 @@ module.exports = {
 
         // (optional, default is us-east-1) AWS region to deploy to
         region: 'us-west-1',
+
+        // (optional, default is "mup-env-<app name>")
+        // Name of AWS Elastic Beanstalk environment
+        envName: 'production', 
 
         // (optional) Packages to install with the yum package manager
         yumPackages: {
@@ -117,7 +122,15 @@ module.exports = {
                 option: 'Cooldown',
                 value: '300'
             }
-        ]
+        ],
+
+        // (optional) Used by "shell" and "debug" commands
+        // Public key is temporarily added to the server when needed using
+        // EC2 Instance Connect
+        sshKey: {
+          privateKey: '~/.ssh/beanstalk',
+          publicKey: '~/.ssh/beanstalk.pub'
+        }
     },
     plugins: ['mup-aws-beanstalk']
 }
@@ -150,6 +163,7 @@ AWS Elastic Beanstalk is free, but you do pay for the services it uses, includin
 - S3. 3 - 4 app bundles are stored on s3. Each deploy will make 2 list requests and upload 1 file. Beanstalk might store additional files on s3.
 
 Graceful Shutdown uses the following services:
+
 - Cloud Trail. The trail is stored in s3 and, according to their docs, usually costs less than $3 / month.
 
 ## Rolling Deploys
@@ -165,6 +179,7 @@ This does not apply when changing the instance type. Instead, Beanstalk terminat
 Load balancing is automatically configured and supports web sockets and sticky sessions.
 
 ## Scale
+
 To scale your app, modify `app.minInstances` in your mup config to how many servers you want your app deployed to. Then run `mup reconfig`.
 
 You cannot scale to 0 servers. Instead, use `mup stop`.
@@ -229,7 +244,7 @@ ACM automatically renews the certificates.
 
 ## Graceful Shutdown
 
-This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it. 
+This plugin can setup CloudWatch Events to send a `SIGTERM` signal to your app on instances that are being drained by the load balancer. Your app can listen for this signal and gradually disconnect users or do other work needed before shutting down. The signal is sent at least 30 seconds before before the load balancer finishes draining it.
 
 Before enabling this feature, make sure the IAM user has these policies:
 
@@ -249,9 +264,11 @@ new DDPGracefulShutdown({
   server: Meteor.server,
 }).installSIGTERMHandler();
 ```
+
 `METEOR_SIGTERM_GRACE_PERIOD_SECONDS` is set to 30 seconds.
 
 In your config, set `app.gracefulShutdown` to `true`:
+
 ```js
 module.exports = {
     app: {
@@ -266,6 +283,48 @@ Then run `mup deploy`.
 
 You can now replace the policies you added with their read only equivilents: `AWSCloudTrailReadOnlyAccess`, `CloudWatchEventsReadOnlyAccess`, `IAMReadOnlyAccess`, and `AmazonSSMReadOnlyAccess`.
 
+## Meteor Shell and Debug
+
+To help with debugging issues that happen in production mup-aws-beanstalk provides two commands:
+
+1) `mup beanstalk shell` to open a production Meteor shell. This is the same shell you get with `meteor shell`, but connected to your app running in Elastic Beanstalk. Your app must use the [`qualia:prod-shell`](https://github.com/qualialabs/prod-shell) or equivalent package
+2) `mup beanstalk debug` to allow connecting your local Node developer tools to the app running in production
+
+Requirements:
+
+1) The IAM user to have the `EC2InstanceConnect` policy.
+2) The beanstalk environment should use a platform based on Amazon Linux 2. If mup-aws-beanstalk times out while trying to connect, the platform might be based on an older version of Amazon Linux.
+3) The `app.sshKey` option should be configured in your mup config:
+
+```js
+module.exports = {
+  app: {
+    sshKey: {
+      privateKey: '~/.ssh/beanstalk',
+      publicKey: '~/.ssh/beanstalk.pub'
+    }
+
+    // ... rest of app config
+  }
+}
+```
+
+The public key is temporarily added to the instance when needed using EC2 Instance Connect.
+
+## Upgrading to Amazon Linux 2
+
+AWS Elastic Beanstalk requires doing a [blue/green deployment] to update to Amazon Linux 2. This involves:
+
+1) Creating a new environment for the AWS Beanstalk app. An easy way to do this is set `app.envName` in your mup config to a different name, and then run `mup deploy`. It will create a new environment with the new name you set.
+2) After the new environment is ready, make sure the app is working correctly
+3) [Swap the CNAME between the old and new environment](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.CNAMESwap.html). This will move traffic to the new environment
+4) Once the old environment is no longer being used, you can terminate it
+
+## Custom `.ebextensions`
+
+You can create a `.ebextensions` folder to further customize the Elastic Beanstalk environment. More details are in [Elastic Beanstalk's docs](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/ebextensions.html).
+
+mup-aws-beanstalk copies your app's `.ebextensions` folder into the app bundle when deploying your app.
 
 ## Troubleshooting
 
