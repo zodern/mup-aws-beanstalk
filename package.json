@@ -1,6 +1,6 @@
 {
-  "name": "mup-aws-beanstalk",
-  "version": "0.7.0",
+  "name": "@settlin/mup-aws-beanstalk-v7",
+  "version": "0.7.1",
   "description": "Deploy apps to AWS Elastic Beanstalk using Meteor Up",
   "main": "index.js",
   "scripts": {

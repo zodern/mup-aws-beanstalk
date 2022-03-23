@@ -1,5 +1,6 @@
 import archiver from 'archiver';
 import fs from 'fs';
+import path from 'path';
 import ejs from 'ejs';
 import { round } from 'lodash';
 import { getNodeVersion, logStep, names } from './utils';
@@ -155,7 +156,7 @@ export function injectFiles(api, name, version, appConfig) {
       copy(sourcePath, destPath);
     });
   }
-  
+
   customConfigPath = api.resolvePath(api.getBasePath(), `${path}/.platform`);
   customConfig = fs.existsSync(customConfigPath);
   if (customConfig) {
