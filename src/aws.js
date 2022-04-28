@@ -16,6 +16,7 @@ export let ec2InstanceConnect = {};
 /* eslint-enable import/no-mutable-exports */
 
 const MAX_RETRY_DELAY = 1000 * 60 * 2;
+const AWS_UPLOAD_TIMEOUT = 1000 * 60 * 60;
 
 export default function configure({ auth, name, region }) {
   const options = {
@@ -30,7 +31,11 @@ export default function configure({ auth, name, region }) {
 
   AWS.config.update(options);
 
-  s3 = new AWS.S3({ params: { Bucket: `mup-${name}` }, apiVersion: '2006-03-01' });
+  s3 = new AWS.S3({
+    params: { Bucket: `mup-${name}` },
+    httpOptions: { timeout: AWS_UPLOAD_TIMEOUT },
+    apiVersion: '2006-03-01'
+  });
   beanstalk = new AWS.ElasticBeanstalk({ apiVersion: '2010-12-01' });
   iam = new AWS.IAM({ apiVersion: '2010-05-08' });
   autoScaling = new AWS.AutoScaling({ apiVersion: '2011-01-01' });
