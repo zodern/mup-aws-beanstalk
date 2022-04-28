@@ -3,6 +3,29 @@ import fs from 'fs';
 import ejs from 'ejs';
 import { round } from 'lodash';
 import { getNodeVersion, logStep, names } from './utils';
+import path from 'path';
+
+function copyFolderSync(src, dest) {
+  if (!fs.existsSync(src)) return;
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+
+  fs.readdirSync(src).forEach((dirent) => {
+    const [srcPath, destPath] = [src, dest].map(dirPath => path.join(dirPath, dirent));
+    const stat = fs.lstatSync(srcPath);
+
+    switch (true) {
+      case stat.isFile():
+        console.log(` ... copying  ${srcPath} ${destPath}`);
+        fs.copyFileSync(srcPath, destPath);
+        break;
+      case stat.isDirectory():
+        copyFolderSync(srcPath, destPath);
+        break;
+      default:
+        break;
+    }
+  });
+}
 
 function copy(source, destination, vars = {}) {
   let contents = fs.readFileSync(source).toString();
@@ -123,8 +146,8 @@ export function injectFiles(api, name, version, appConfig) {
   destPath = api.resolvePath(bundlePath, 'bundle/health-check.js');
   copy(sourcePath, destPath);
 
-  const customConfigPath = api.resolvePath(api.getBasePath(), `${path}/.ebextensions`);
-  const customConfig = fs.existsSync(customConfigPath);
+  let customConfigPath = api.resolvePath(api.getBasePath(), `${path}/.ebextensions`);
+  let customConfig = fs.existsSync(customConfigPath);
   if (customConfig) {
     console.log('  Copying files from project .ebextensions folder');
     fs.readdirSync(customConfigPath).forEach((file) => {
@@ -132,6 +155,13 @@ export function injectFiles(api, name, version, appConfig) {
       destPath = api.resolvePath(bundlePath, `bundle/.ebextensions/${file}`);
       copy(sourcePath, destPath);
     });
+  }
+  
+  customConfigPath = api.resolvePath(api.getBasePath(), `${path}/.platform`);
+  customConfig = fs.existsSync(customConfigPath);
+  if (customConfig) {
+    console.log('  Copying files from project .platform folder');
+    copyFolderSync(customConfigPath, api.resolvePath(bundlePath, 'bundle/.platform'));
   }
 }
 
