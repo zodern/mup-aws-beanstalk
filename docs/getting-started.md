@@ -69,6 +69,7 @@ You can select `Add user to group` and create a new group. The group should have
 - `AWSCertificateManagerFullAccess` Used to create and manage SSL certificates for the app
 - `EC2InstanceConnect` is optional. Used when accessing a production Meteor shell or to connect your node developer tools to the app running in Elastic Beanstalk
 - `AmazonEC2FullAccess`
+- `AmazonS3FullAccess`
 
 In your mup config, set `app.auth.id` to the Access Key ID, and `app.auth.secret` to the Secret access key AWS gives you after creating the user.
 
