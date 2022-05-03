@@ -33,7 +33,7 @@
     "eslint-plugin-react": "^7.26.0",
     "gfm-code-blocks": "^1.0.0",
     "mocha": "^8.0.1",
-    "mup": "^1.5.4",
+    "mup": "^1.5.8",
     "shelljs": "^0.8.4"
   },
   "dependencies": {
