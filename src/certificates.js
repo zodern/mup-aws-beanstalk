@@ -29,42 +29,37 @@ export default async function ensureSSLConfigured(config, certificateArn) {
 
   const domains = config.app.sslDomains;
 
+  // we use domains to decide if we need to do something about SSL
   if (!domains || domains.length === 0) {
-    await beanstalk.updateEnvironment({
-      EnvironmentName: environment,
-      // eslint-disable-next-line arrow-body-style
-      OptionsToRemove: ebConfig.map(({ Namespace, OptionName }) => {
-        return {
-          Namespace,
-          OptionName
-        };
-      })
-    }).promise();
-  } else {
-    let needToUpdate = false;
-
-    const {
-      ConfigurationSettings
-    } = await beanstalk.describeConfigurationSettings({
-      EnvironmentName: environment,
-      ApplicationName: app
-    }).promise();
-
-    const current = ConfigurationSettings[0].OptionSettings.reduce(convertToObject, {});
-    const desired = ebConfig.reduce(convertToObject, {});
-
-    Object.keys(desired).forEach((key) => {
-      if (needToUpdate || !current[key] || current[key].Value !== desired[key].Value) {
-        needToUpdate = true;
-      }
-    });
-
-    if (needToUpdate) {
-      await beanstalk.updateEnvironment({
-        EnvironmentName: environment,
-        OptionSettings: ebConfig
-      }).promise();
-      await waitForEnvReady(config, true);
-    }
+    return;
   }
+
+  const { ConfigurationSettings } = await beanstalk
+    .describeConfigurationSettings({
+      EnvironmentName: environment,
+      ApplicationName: app,
+    })
+    .promise();
+
+  const current = ConfigurationSettings[0].OptionSettings.reduce(
+    convertToObject,
+    {}
+  );
+  const desired = ebConfig.reduce(convertToObject, {});
+
+  const needToUpdate = Object.keys(desired).find(
+    (key) => !current[key] || current[key].Value !== desired[key].Value
+  );
+
+  if (!needToUpdate) {
+    return;
+  }
+
+  await beanstalk
+    .updateEnvironment({
+      EnvironmentName: environment,
+      OptionSettings: ebConfig,
+    })
+    .promise();
+  await waitForEnvReady(config, true);
 }
