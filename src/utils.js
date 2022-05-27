@@ -8,6 +8,7 @@ import uuid from 'uuid';
 import { execSync } from 'child_process';
 import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
 import { getRecheckInterval } from './recheck';
+import { waitForEnvReady } from './env-ready';
 
 export function logStep(message) {
   console.log(chalk.blue(message));
@@ -96,6 +97,8 @@ export async function getLogs(api, logNames) {
   const {
     environment
   } = names(config);
+
+  await waitForEnvReady(config, false);
 
   logStep('=> Requesting Logs');
 
