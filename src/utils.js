@@ -532,6 +532,13 @@ export async function connectToInstance(api, instanceId) {
     sshKey
   } = api.getConfig().app;
 
+  if (!sshKey) {
+    const error = new Error('missing sshKey config');
+    error.solution = 'Learn how to configure sshKey at https://github.com/zodern/mup-aws-beanstalk/blob/master/docs/index.md#meteor-shell-and-debug';
+
+    throw error;
+  }
+
   const { Reservations } = await ec2.describeInstances({
     InstanceIds: [
       instanceId
