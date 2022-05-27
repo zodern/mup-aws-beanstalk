@@ -556,24 +556,36 @@ export async function connectToInstance(api, instanceId, commandLabel) {
     console.warn('Instance has more than one security group. Please open a GitHub issue for mup-aws-beanstalk');
   }
 
-  const { SecurityGroupRules } = await ec2.authorizeSecurityGroupIngress({
-    GroupId: securityGroups[0],
-    IpPermissions: [
-      {
-        FromPort: 22,
-        IpProtocol: 'tcp',
-        IpRanges: [
-          {
-            CidrIp: `${ipAddress}/32`,
-            Description: `Temporary SSH access for ${commandLabel}`
-          }
-        ],
-        ToPort: 22
-      }
-    ]
-  }).promise();
+  let ruleIds = [];
 
-  const ruleIds = SecurityGroupRules.map(rule => rule.SecurityGroupRuleId);
+  try {
+    const { SecurityGroupRules } = await ec2.authorizeSecurityGroupIngress({
+      GroupId: securityGroups[0],
+      IpPermissions: [
+        {
+          FromPort: 22,
+          IpProtocol: 'tcp',
+          IpRanges: [
+            {
+              CidrIp: `${ipAddress}/32`,
+              Description: `Temporary SSH access for ${commandLabel}`
+            }
+          ],
+          ToPort: 22
+        }
+      ]
+    }).promise();
+
+    ruleIds = SecurityGroupRules.map(rule => rule.SecurityGroupRuleId);
+  } catch (e) {
+    if (e.code === 'InvalidPermission.Duplicate') {
+      // This rule already exists
+      // TODO: should we find the rule id so we can remove it, or leave it in
+      // case the user had manually added this rule?
+    } else {
+      throw e;
+    }
+  }
 
   await ec2InstanceConnect.sendSSHPublicKey({
     InstanceId: instanceId,
@@ -592,6 +604,10 @@ export async function connectToInstance(api, instanceId, commandLabel) {
   return {
     sshOptions,
     removeSSHAccess() {
+      if (ruleIds.length === 0) {
+        return;
+      }
+
       console.log('Removing temporary security group rule for SSH');
       return ec2.revokeSecurityGroupIngress({
         GroupId: securityGroups[0],
