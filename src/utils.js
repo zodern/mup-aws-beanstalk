@@ -527,7 +527,7 @@ export async function pickInstance(config, instance) {
   };
 }
 
-export async function connectToInstance(api, instanceId) {
+export async function connectToInstance(api, instanceId, commandLabel) {
   const {
     sshKey
   } = api.getConfig().app;
@@ -547,6 +547,33 @@ export async function connectToInstance(api, instanceId) {
 
   const instance = Reservations[0].Instances[0];
   const availabilityZone = instance.Placement.AvailabilityZone;
+  const securityGroups = instance.SecurityGroups.map(g => g.GroupId);
+
+  let { data: ipAddress } = await axios.get('https://ipv4.icanhazip.com');
+  ipAddress = ipAddress.trim();
+
+  if (securityGroups.length > 1) {
+    console.warn('Instance has more than one security group. Please open a GitHub issue for mup-aws-beanstalk');
+  }
+
+  const { SecurityGroupRules } = await ec2.authorizeSecurityGroupIngress({
+    GroupId: securityGroups[0],
+    IpPermissions: [
+      {
+        FromPort: 22,
+        IpProtocol: 'tcp',
+        IpRanges: [
+          {
+            CidrIp: `${ipAddress}/32`,
+            Description: `Temporary SSH access for ${commandLabel}`
+          }
+        ],
+        ToPort: 22
+      }
+    ]
+  }).promise();
+
+  const ruleIds = SecurityGroupRules.map(rule => rule.SecurityGroupRuleId);
 
   await ec2InstanceConnect.sendSSHPublicKey({
     InstanceId: instanceId,
@@ -555,11 +582,22 @@ export async function connectToInstance(api, instanceId) {
     SSHPublicKey: fs.readFileSync(api.resolvePath(sshKey.publicKey), 'utf-8')
   }).promise();
 
-  return {
+  const sshOptions = {
     host: instance.PublicDnsName,
     port: 22,
     username: 'ec2-user',
     privateKey: fs.readFileSync(api.resolvePath(sshKey.privateKey), 'utf-8')
+  };
+
+  return {
+    sshOptions,
+    removeSSHAccess() {
+      console.log('Removing temporary security group rule for SSH');
+      return ec2.revokeSecurityGroupIngress({
+        GroupId: securityGroups[0],
+        SecurityGroupRuleIds: ruleIds
+      }).promise();
+    }
   };
 }
 

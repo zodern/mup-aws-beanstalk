@@ -309,7 +309,7 @@ module.exports = {
 }
 ```
 
-The public key is temporarily added to the instance when needed using EC2 Instance Connect.
+The public key is temporarily added to the instance when needed using EC2 Instance Connect. Also, a rule will be added to the instance's security group to allow ssh access from your IP address. The rule is removed when mup exits.
 
 ## Upgrading to Amazon Linux 2
 

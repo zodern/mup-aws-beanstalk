@@ -764,8 +764,10 @@ export async function shell(api) {
     return;
   }
 
-  const sshOptions = await connectToInstance(api, selected);
-
+  const {
+    sshOptions,
+    removeSSHAccess
+  } = await connectToInstance(api, selected, 'mup beanstalk shell');
   const conn = new Client();
   conn.on('ready', () => {
     conn.exec('sudo node /home/webapp/meteor-shell.js', {
@@ -774,8 +776,9 @@ export async function shell(api) {
       if (err) {
         throw err;
       }
-      stream.on('close', () => {
+      stream.on('close', async () => {
         conn.end();
+        await removeSSHAccess();
         process.exit();
       });
 
@@ -808,7 +811,10 @@ export async function debug(api) {
     return;
   }
 
-  const sshOptions = await connectToInstance(api, selected);
+  const {
+    sshOptions,
+    removeSSHAccess
+  } = await connectToInstance(api, selected, 'mup beanstalk debug');
 
   const conn = new Client();
   conn.on('ready', async () => {
@@ -866,4 +872,9 @@ export async function debug(api) {
       }
     });
   }).connect(sshOptions);
+
+  process.on('SIGINT', async () => {
+    await removeSSHAccess();
+    process.exit();
+  });
 }
