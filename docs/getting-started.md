@@ -16,11 +16,10 @@ In the terminal, run
 
 ```bash
 cd path/to/app
-mkdir .deploy && cd .deploy
 mup init
 ```
 
-This will create a .deploy folder in your app, and `mup init` will add a Meteor settings file and mup config in it.
+`mup init` will create a `.deploy` folder and put a Meteor settings file and mup config in it.
 
 ## Step 2: Customize your Mup Config
 
@@ -51,7 +50,7 @@ You will want to modify:
 
 1) The app name. It must be at least 4 characters
 2) `app.env.ROOT_URL`
-3) `app.env.MONGO_URL` You will need to get a database from mLab, Compose, or another DBaaS provider
+3) `app.env.MONGO_URL` You will need to get a database from MongoDB Atlas, ScaleGrid, or another DBaaS provider
 
 The next step will provide the values for the `app.auth` object.
 
@@ -59,7 +58,7 @@ The next step will provide the values for the `app.auth` object.
 
 You will need to [create an Amazon account](https://portal.aws.amazon.com/billing/signup#/start) if you do not have one.
 
-Next, create an IAM user at [https://console.aws.amazon.com/iam/home?region=us-east-1#/users](https://console.aws.amazon.com/iam/home?region=us-east-1#/users)
+Next, create an IAM user at [https://console.aws.amazon.com/iam/home#/users](https://console.aws.amazon.com/iam/home#/users)
 
 The access type should be `Programmatic access`.
 You can select `Add user to group` and create a new group. The group should have the following permissions:
