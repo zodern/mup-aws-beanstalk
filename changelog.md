@@ -1,12 +1,12 @@
-## Next
+## 0.8.0 - July 18, 2022
 
 - Support `.platform` files (@s7dhansh)
 - If you manually configure the ssl certificate instead of configuring it in the mup config, mup-aws-beanstalk will no longer remove your changes (@filipenovola)
-- `mup beanstalk shell` and `mup beanstalk debug` will add a temporary rule to the security group to allow ssh access from your ip address
+- `mup beanstalk shell` and `mup beanstalk debug` will temporarily add a rule to the security group to allow ssh access from your ip address
 - Fix configuring nginx when using Amazon Linux 2
 - Fix health checks when using Amazon Linux 2
 - Improve documentation (@filipenevola)
-- Increase s3 upload timeout (@@ramijarrar)
+- Increase s3 upload timeout (@ramijarrar)
 - Improve error when sshKey is not configured
 - When requesting logs, wait for env to be ready
 
