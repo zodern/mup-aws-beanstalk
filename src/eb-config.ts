@@ -5,8 +5,13 @@ import { createEnvFile } from './env-settings';
 import { uploadEnvFile } from './upload';
 import { names } from './utils';
 import { largestEnvVersion } from './versions';
+import { MeteorSettings, MupApi, MupConfig } from "./types";
 
-export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
+export function createDesiredConfig(
+  mupConfig: MupConfig,
+  settings: MeteorSettings,
+  longEnvVarsVersion: number | false
+) {
   const {
     env,
     instanceType,
@@ -219,7 +224,7 @@ export function diffConfig(current, desired) {
   };
 }
 
-export async function prepareUpdateEnvironment(api) {
+export async function prepareUpdateEnvironment(api: MupApi) {
   const config = api.getConfig();
   const {
     app,
@@ -231,7 +236,7 @@ export async function prepareUpdateEnvironment(api) {
   } = await beanstalk.describeConfigurationSettings({
     EnvironmentName: environment,
     ApplicationName: app
-  }).promise();
+  });
   const { longEnvVars } = config.app;
   let nextEnvVersion = 0;
   let envSettingsChanged;
@@ -240,8 +245,10 @@ export async function prepareUpdateEnvironment(api) {
   if (longEnvVars) {
     const currentEnvVersion = await largestEnvVersion(api);
     const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
+
     desiredSettings = createEnvFile(config.app.env, api.getSettings());
     envSettingsChanged = currentSettings !== desiredSettings;
+
     if (envSettingsChanged) {
       nextEnvVersion = currentEnvVersion + 1;
       await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);

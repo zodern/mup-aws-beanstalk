@@ -8,8 +8,13 @@ export function getRecheckInterval() {
   }
 }
 
-export function checkForThrottlingException(exception) {
-  return (exception && (exception.code === 'Throttling') && (exception.message === 'Rate exceeded'));
+export function checkForThrottlingException(exception: unknown) {
+  return (exception
+  && typeof exception === 'object'
+  && "code" in exception
+  && (exception.code === 'Throttling')
+  && "message" in exception
+  && (exception.message === 'Rate exceeded'));
 }
 
 export function handleThrottlingException() {

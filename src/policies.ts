@@ -1,4 +1,6 @@
-export function trailBucketPolicy(accountId, bucketName) {
+import { Target } from "@aws-sdk/client-cloudwatch-events";
+
+export function trailBucketPolicy(accountId: string, bucketName: string) {
   const policy = {
     Version: '2012-10-17',
     Statement: [{
@@ -33,7 +35,8 @@ export function trailBucketPolicy(accountId, bucketName) {
 export const rolePolicy = '{ "Version": "2008-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "ec2.amazonaws.com" }, "Action": "sts:AssumeRole" } ] }';
 export const serviceRole = '{ "Version": "2012-10-17", "Statement": [ { "Effect": "Allow", "Principal": { "Service": "elasticbeanstalk.amazonaws.com" }, "Action": "sts:AssumeRole", "Condition": { "StringEquals": { "sts:ExternalId": "elasticbeanstalk" } } } ] }';
 export const eventTargetRole = '{ "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "events.amazonaws.com" }, "Action": "sts:AssumeRole" }, { "Effect": "Allow", "Principal": { "Service": [ "ssm.amazonaws.com", "ec2.amazonaws.com" ] }, "Action": "sts:AssumeRole" } ] }';
-export const passRolePolicy = (accountId, role) => {
+
+export const passRolePolicy = (accountId: string, role: string) => {
   const policy = {
     Version: '2012-10-17',
     Statement: [
@@ -48,7 +51,7 @@ export const passRolePolicy = (accountId, role) => {
   return JSON.stringify(policy);
 };
 
-export function eventTargetRolePolicy(accountId, env, region) {
+export function eventTargetRolePolicy(accountId: string, env: string, region: string) {
   const policy = {
     Version: '2012-10-17',
     Statement: [
@@ -89,7 +92,12 @@ export function eventTargetRolePolicy(accountId, env, region) {
 
 export const DeregisterEvent = '{ "source": [ "aws.elasticloadbalancing" ], "detail-type": [ "AWS API Call via CloudTrail" ], "detail": { "eventSource": [ "elasticloadbalancing.amazonaws.com" ], "eventName": [ "DeregisterTargets" ] } }';
 
-export const deregisterEventTarget = (envName, role, accountId, region) => ({
+export const deregisterEventTarget = (
+  envName: string,
+  role: string,
+  accountId: string,
+  region: string
+): Target => ({
   Id: `mup-target-${envName}`,
   Arn: `arn:aws:ssm:${region}:${accountId}:automation-definition/mup-graceful-shutdown:$LATEST`,
   RoleArn: `arn:aws:iam::${accountId}:role/${role}`,

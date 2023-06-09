@@ -2,3 +2,4 @@ node_modules
 lib
 .vscode
 tests/validate-tmp
+*.tsbuildinfo

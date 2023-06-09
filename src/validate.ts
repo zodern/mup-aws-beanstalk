@@ -1,4 +1,5 @@
-import joi from '@hapi/joi';
+import joi from 'joi';
+import { MupUtils, MupConfig } from "./types";
 
 const schema = joi.object().keys({
   name: joi.string().min(1).required(),
@@ -45,12 +46,14 @@ const schema = joi.object().keys({
   }
 });
 
-export default function (config, utils) {
-  let details = [];
+export default function (config: MupConfig, utils: MupUtils) {
+  let details: { message: string, path: string }[] = [];
+
   details = utils.combineErrorDetails(
     details,
-    joi.validate(config.app, schema, utils.VALIDATE_OPTIONS)
+    schema.validate(config.app, utils.VALIDATE_OPTIONS)
   );
+
   if (config.app && config.app.name && config.app.name.length < 4) {
     details.push({
       message: 'must have at least 4 characters',

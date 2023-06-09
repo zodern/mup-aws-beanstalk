@@ -1,20 +1,25 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import fs from 'fs';
-import { isEqual } from 'lodash';
+import { isEqual, isString } from 'lodash';
 import os from 'os';
 import random from 'random-seed';
 import uuid from 'uuid';
+import { Client } from "ssh2";
 import { execSync } from 'child_process';
 import { beanstalk, cloudWatchEvents, iam, s3, sts, ssm, ec2, ec2InstanceConnect } from './aws';
 import { getRecheckInterval } from './recheck';
 import { waitForEnvReady } from './env-ready';
+import { MupApi, MupAwsConfig, MupConfig, Buckets } from "./types";
+import { EnvironmentInfoDescription } from "@aws-sdk/client-elastic-beanstalk";
+import { AttachRolePolicyCommandOutput } from "@aws-sdk/client-iam";
+import { Target } from "@aws-sdk/client-cloudwatch-events";
 
-export function logStep(message) {
+export function logStep(message: string) {
   console.log(chalk.blue(message));
 }
 
-export function shouldRebuild(bundlePath, useCachedBuild) {
+export function shouldRebuild(bundlePath: string, useCachedBuild?: boolean) {
   if (fs.existsSync(bundlePath) && useCachedBuild) {
     return false;
   }
@@ -22,7 +27,7 @@ export function shouldRebuild(bundlePath, useCachedBuild) {
   return true;
 }
 
-export function tmpBuildPath(appPath, api) {
+export function tmpBuildPath(appPath: string, api: MupApi) {
   const rand = random.create(appPath);
   const uuidNumbers = [];
 
@@ -36,7 +41,7 @@ export function tmpBuildPath(appPath, api) {
   );
 }
 
-export function names(config) {
+export function names(config: MupConfig) {
   const name = config.app.name.toLowerCase();
 
   return {
@@ -62,20 +67,18 @@ export function createUniqueName(prefix = '') {
   return `${prefix}-${Date.now()}-${randomNumbers}`;
 }
 
-async function retrieveEnvironmentInfo(api, count) {
+async function retrieveEnvironmentInfo(api: MupApi, count: number): Promise<EnvironmentInfoDescription[]> {
   const config = api.getConfig();
-  const {
-    environment
-  } = names(config);
+  const { environment } = names(config);
 
   const {
     EnvironmentInfo
   } = await beanstalk.retrieveEnvironmentInfo({
     EnvironmentName: environment,
     InfoType: 'tail'
-  }).promise();
+  });
 
-  if (EnvironmentInfo.length > 0) {
+  if (EnvironmentInfo && EnvironmentInfo.length > 0) {
     return EnvironmentInfo;
   } else if (count > 5) {
     throw new Error('No logs');
@@ -92,11 +95,9 @@ async function retrieveEnvironmentInfo(api, count) {
   });
 }
 
-export async function getLogs(api, logNames) {
+export async function getLogs(api: MupApi, logNames: string[]): Promise<{ data: string[], instance: string }[]> {
   const config = api.getConfig();
-  const {
-    environment
-  } = names(config);
+  const { environment } = names(config);
 
   await waitForEnvReady(config, false);
 
@@ -105,43 +106,45 @@ export async function getLogs(api, logNames) {
   await beanstalk.requestEnvironmentInfo({
     EnvironmentName: environment,
     InfoType: 'tail'
-  }).promise();
+  });
 
   const EnvironmentInfo = await retrieveEnvironmentInfo(api, 0);
 
   logStep('=> Downloading Logs');
 
-  const logsForServer = EnvironmentInfo.reduce((result, info) => {
-    result[info.Ec2InstanceId] = info.Message;
-
+  const logsForServer = EnvironmentInfo && EnvironmentInfo.reduce(
+    (result: { [key: string]: string }, { Ec2InstanceId, Message }: EnvironmentInfoDescription) => {
+      if (isString(Ec2InstanceId)) {
+        result[Ec2InstanceId] = Message!;
+      }
     return result;
   }, {});
 
   return Promise.all(Object.keys(logsForServer).map(key =>
-    new Promise((resolve, reject) => {
-      axios.get(logsForServer[key]).then(({ data }) => {
+    new Promise<{ data: string[], instance: string }>((resolve, reject) => {
+      axios.get<string>(logsForServer[key]).then(({ data }) => {
         // The separator changed with Amazon Linux 2
         let parts = data.split('----------------------------------------\n/var/log/');
         if (parts.length === 1) {
           parts = data.split('-------------------------------------\n/var/log/');
         }
 
-        data = logNames.map(name =>
-          parts.find(part => part.trim().startsWith(name)));
+        const logParts = logNames.map(name =>
+          parts.find(part => part.trim().startsWith(name)) || '');
 
         resolve({
-          data,
+          data: logParts,
           instance: key
         });
       }).catch(reject);
     })));
 }
 
-export function getNodeVersion(api, bundlePath) {
-  let star = fs.readFileSync(api.resolvePath(bundlePath, 'bundle/star.json')).toString();
+export function getNodeVersion(api: MupApi, bundlePath: string) {
+  const starString = fs.readFileSync(api.resolvePath(bundlePath, 'bundle/star.json')).toString();
   const nodeVersionTxt = fs.readFileSync(api.resolvePath(bundlePath, 'bundle/.node_version.txt')).toString();
 
-  star = JSON.parse(star);
+  const star = JSON.parse(starString);
 
   if (star.npmVersion) {
     return {
@@ -182,13 +185,13 @@ export async function selectPlatformArn() {
       Operator: '=',
       Values: ['WebServer/Standard']
     }]
-  }).promise();
+  });
 
-  if (PlatformBranchSummaryList.length === 0) {
+  if (!PlatformBranchSummaryList || PlatformBranchSummaryList.length === 0) {
     throw new Error('Unable to find supported Node.js platform');
   }
 
-  const branchName = PlatformBranchSummaryList[0].BranchName;
+  const branchName = PlatformBranchSummaryList[0].BranchName as string;
 
   const {
     PlatformSummaryList
@@ -205,21 +208,21 @@ export async function selectPlatformArn() {
         Values: ['Ready']
       }
     ]
-  }).promise();
+  });
 
-  const arn = PlatformSummaryList[0].PlatformArn;
+  const arn = PlatformSummaryList![0].PlatformArn;
 
   return arn;
 }
 
-export async function attachPolicies(config, roleName, policies) {
-  const promises = [];
+export async function attachPolicies(roleName: string, policies: string[]) {
+  const promises: Promise<AttachRolePolicyCommandOutput>[] = [];
 
   policies.forEach((policy) => {
     const promise = iam.attachRolePolicy({
       RoleName: roleName,
       PolicyArn: policy
-    }).promise();
+    });
 
     promises.push(promise);
   });
@@ -227,27 +230,29 @@ export async function attachPolicies(config, roleName, policies) {
   await Promise.all(promises);
 }
 
-export function getAccountId() {
-  return sts.getCallerIdentity()
-    .promise()
-    .then(({ Account }) => Account);
+export async function getAccountId() {
+  const identity = await sts.getCallerIdentity({})
+  return identity.Account!;
 }
 
-export async function ensureRoleExists(name, assumeRolePolicyDocument, ensureAssumeRolePolicy) {
+export async function ensureRoleExists(
+  name: string,
+  assumeRolePolicyDocument: string,
+  ensureAssumeRolePolicy?: boolean
+) {
   let exists = true;
   let updateAssumeRolePolicy = false;
 
   try {
     const { Role } = await iam.getRole({
       RoleName: name
-    }).promise();
+    });
 
-
-    const currentAssumeRolePolicy = decodeURIComponent(Role.AssumeRolePolicyDocument);
+    const currentAssumeRolePolicy = decodeURIComponent(Role!.AssumeRolePolicyDocument!);
     // Make the whitespace consistent with the current document
-    assumeRolePolicyDocument = JSON.stringify(JSON.parse(assumeRolePolicyDocument));
+    const consistentAssumeRolePolicyDocument = JSON.stringify(JSON.parse(assumeRolePolicyDocument));
 
-    if (currentAssumeRolePolicy !== assumeRolePolicyDocument && ensureAssumeRolePolicy) {
+    if (currentAssumeRolePolicy !== consistentAssumeRolePolicyDocument && ensureAssumeRolePolicy) {
       updateAssumeRolePolicy = true;
     }
   } catch (e) {
@@ -258,22 +263,22 @@ export async function ensureRoleExists(name, assumeRolePolicyDocument, ensureAss
     await iam.createRole({
       RoleName: name,
       AssumeRolePolicyDocument: assumeRolePolicyDocument
-    }).promise();
+    });
   } else if (updateAssumeRolePolicy) {
     await iam.updateAssumeRolePolicy({
       RoleName: name,
       PolicyDocument: assumeRolePolicyDocument
-    }).promise();
+    });
   }
 }
 
-export async function ensureInstanceProfileExists(config, name) {
+export async function ensureInstanceProfileExists(name: string) {
   let exists = true;
 
   try {
     await iam.getInstanceProfile({
       InstanceProfileName: name
-    }).promise();
+    });
   } catch (e) {
     exists = false;
   }
@@ -281,21 +286,20 @@ export async function ensureInstanceProfileExists(config, name) {
   if (!exists) {
     await iam.createInstanceProfile({
       InstanceProfileName: name
-    }).promise();
+    });
   }
 }
 
-export async function ensureRoleAdded(config, instanceProfile, role) {
+export async function ensureRoleAdded(instanceProfile: string, role: string) {
   let added = true;
-
 
   const {
     InstanceProfile
   } = await iam.getInstanceProfile({
     InstanceProfileName: instanceProfile
-  }).promise();
+  });
 
-  if (InstanceProfile.Roles.length === 0 || InstanceProfile.Roles[0].RoleName !== role) {
+  if (InstanceProfile!.Roles!.length === 0 || InstanceProfile!.Roles![0].RoleName !== role) {
     added = false;
   }
 
@@ -303,33 +307,37 @@ export async function ensureRoleAdded(config, instanceProfile, role) {
     await iam.addRoleToInstanceProfile({
       InstanceProfileName: instanceProfile,
       RoleName: role
-    }).promise();
+    });
   }
 }
 
-export async function ensurePoliciesAttached(config, role, policies) {
+export async function ensurePoliciesAttached(role: string, policies: string[]) {
   let {
     AttachedPolicies
   } = await iam.listAttachedRolePolicies({
     RoleName: role
-  }).promise();
+  });
 
-  AttachedPolicies = AttachedPolicies.map(policy => policy.PolicyArn);
+  const arns = AttachedPolicies!.map(policy => policy.PolicyArn);
 
   const unattachedPolicies = policies.reduce((result, policy) => {
-    if (AttachedPolicies.indexOf(policy) === -1) {
+    if (arns.indexOf(policy) === -1) {
       result.push(policy);
     }
 
     return result;
-  }, []);
+  }, [] as string[]);
 
   if (unattachedPolicies.length > 0) {
-    await attachPolicies(config, role, unattachedPolicies);
+    await attachPolicies(role, unattachedPolicies);
   }
 }
 
-export async function ensureInlinePolicyAttached(role, policyName, policyDocument) {
+export async function ensureInlinePolicyAttached(
+  role: string,
+  policyName: string,
+  policyDocument: string
+) {
   let exists = true;
   let needsUpdating = false;
 
@@ -337,8 +345,8 @@ export async function ensureInlinePolicyAttached(role, policyName, policyDocumen
     const result = await iam.getRolePolicy({
       RoleName: role,
       PolicyName: policyName
-    }).promise();
-    const currentPolicyDocument = decodeURIComponent(result.PolicyDocument);
+    });
+    const currentPolicyDocument = decodeURIComponent(result.PolicyDocument!);
 
     if (currentPolicyDocument !== policyDocument) {
       needsUpdating = true;
@@ -352,11 +360,15 @@ export async function ensureInlinePolicyAttached(role, policyName, policyDocumen
       RoleName: role,
       PolicyName: policyName,
       PolicyDocument: policyDocument
-    }).promise();
+    });
   }
 }
 
-export async function ensureBucketExists(buckets, bucketName, region) {
+export async function ensureBucketExists(
+  buckets: Buckets,
+  bucketName: string,
+  region: string
+) {
   if (!buckets.find(bucket => bucket.Name === bucketName)) {
     await s3.createBucket({
       Bucket: bucketName,
@@ -365,22 +377,28 @@ export async function ensureBucketExists(buckets, bucketName, region) {
           LocationConstraint: region
         }
       } : {})
-    }).promise();
+    });
 
     return true;
   }
 }
 
-export function findBucketWithPrefix(buckets, prefix) {
-  return buckets.find(bucket => bucket.Name.indexOf(prefix) === 0);
+export function findBucketWithPrefix(
+  buckets: Buckets,
+  prefix: string
+) {
+  return buckets.find(bucket => bucket.Name!.indexOf(prefix) === 0);
 }
 
-export async function ensureBucketPolicyAttached(bucketName, policy) {
+export async function ensureBucketPolicyAttached(
+  bucketName: string,
+  policy: string
+) {
   let error = false;
   let currentPolicy;
 
   try {
-    const { Policy } = await s3.getBucketPolicy({ Bucket: bucketName }).promise();
+    const { Policy } = await s3.getBucketPolicy({ Bucket: bucketName });
     currentPolicy = Policy;
   } catch (e) {
     error = true;
@@ -392,15 +410,19 @@ export async function ensureBucketPolicyAttached(bucketName, policy) {
       Policy: policy
     };
 
-    await s3.putBucketPolicy(params).promise();
+    await s3.putBucketPolicy(params);
   }
 }
 
-export async function ensureCloudWatchRule(name, description, eventPattern) {
+export async function ensureCloudWatchRule(
+  name: string,
+  description: string,
+  eventPattern: string
+) {
   let error = false;
 
   try {
-    await cloudWatchEvents.describeRule({ Name: name }).promise();
+    await cloudWatchEvents.describeRule({ Name: name });
   } catch (e) {
     error = true;
   }
@@ -410,7 +432,7 @@ export async function ensureCloudWatchRule(name, description, eventPattern) {
       Name: name,
       Description: description,
       EventPattern: eventPattern
-    }).promise();
+    });
 
     return true;
   }
@@ -418,25 +440,26 @@ export async function ensureCloudWatchRule(name, description, eventPattern) {
   return false;
 }
 
-export async function ensureRuleTargetExists(ruleName, target) {
+export async function ensureRuleTargetExists(ruleName: string, target: Target) {
   const {
     Targets
   } = await cloudWatchEvents.listTargetsByRule({
     Rule: ruleName
-  }).promise();
+  });
 
-  if (!Targets.find(_target => isEqual(_target, target))) {
+  if (!Targets!.find(_target => isEqual(_target, target))) {
     const params = {
       Rule: ruleName,
       Targets: [target]
     };
-    await cloudWatchEvents.putTargets(params).promise();
+
+    await cloudWatchEvents.putTargets(params);
 
     return true;
   }
 }
 
-export function coloredStatusText(envColor, text) {
+export function coloredStatusText(envColor: string, text: string) {
   if (envColor === 'Green') {
     return chalk.green(text);
   } else if (envColor === 'Yellow') {
@@ -447,7 +470,7 @@ export function coloredStatusText(envColor, text) {
   return text;
 }
 
-export function createVersionDescription(api, appConfig) {
+export function createVersionDescription(api: MupApi, appConfig: MupAwsConfig) {
   const appPath = api.resolvePath(api.getBasePath(), appConfig.path);
   let description = '';
 
@@ -462,15 +485,15 @@ export function createVersionDescription(api, appConfig) {
   return description.split('\n')[0].slice(0, 195);
 }
 
-export async function ensureSsmDocument(name, content) {
+export async function ensureSsmDocument(name: string, content: string) {
   let exists = true;
   let needsUpdating = false;
 
   try {
-    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$DEFAULT' }).promise();
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$DEFAULT' });
     // If the document was created or edited on the AWS console, there is extra new
     // line characters and whitespace
-    const currentContent = JSON.stringify(JSON.parse(result.Content.replace(/\r?\n|\r/g, '')));
+    const currentContent = JSON.stringify(JSON.parse(result.Content!.replace(/\r?\n|\r/g, '')));
     if (currentContent !== content) {
       needsUpdating = true;
     }
@@ -483,7 +506,7 @@ export async function ensureSsmDocument(name, content) {
       Content: content,
       Name: name,
       DocumentType: 'Automation'
-    }).promise();
+    });
 
     return true;
   } else if (needsUpdating) {
@@ -492,33 +515,34 @@ export async function ensureSsmDocument(name, content) {
         Content: content,
         Name: name,
         DocumentVersion: '$LATEST'
-      }).promise();
+      });
     } catch (e) {
       // If the latest document version has the correct content
       // then it must not be the default version. Ignore the error
       // so we can fix the default version
+      // @ts-ignore
       if (e.code !== 'DuplicateDocumentContent') {
         throw e;
       }
     }
 
-    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' }).promise();
+    const result = await ssm.getDocument({ Name: name, DocumentVersion: '$LATEST' });
     await ssm.updateDocumentDefaultVersion({
       DocumentVersion: result.DocumentVersion,
       Name: name
-    }).promise();
+    });
   }
 }
 
-export async function pickInstance(config, instance) {
+export async function pickInstance(config: MupConfig, instance: string) {
   const {
     environment
   } = names(config);
 
   const { EnvironmentResources } = await beanstalk.describeEnvironmentResources({
     EnvironmentName: environment
-  }).promise();
-  const instanceIds = EnvironmentResources.Instances.map(({ Id }) => Id);
+  });
+  const instanceIds = EnvironmentResources!.Instances!.map(({ Id }) => Id);
   const description = [
     'Available instances',
     ...instanceIds.map(id => `  - ${id}`)
@@ -530,13 +554,18 @@ export async function pickInstance(config, instance) {
   };
 }
 
-export async function connectToInstance(api, instanceId, commandLabel) {
+export async function connectToInstance(
+  api: MupApi,
+  instanceId: string,
+  commandLabel: string
+) {
   const {
     sshKey
   } = api.getConfig().app;
 
   if (!sshKey) {
     const error = new Error('missing sshKey config');
+    // @ts-ignore
     error.solution = 'Learn how to configure sshKey at https://github.com/zodern/mup-aws-beanstalk/blob/master/docs/index.md#meteor-shell-and-debug';
 
     throw error;
@@ -546,20 +575,20 @@ export async function connectToInstance(api, instanceId, commandLabel) {
     InstanceIds: [
       instanceId
     ]
-  }).promise();
+  });
 
-  const instance = Reservations[0].Instances[0];
-  const availabilityZone = instance.Placement.AvailabilityZone;
-  const securityGroups = instance.SecurityGroups.map(g => g.GroupId);
+  const instance = Reservations![0].Instances![0];
+  const availabilityZone = instance!.Placement!.AvailabilityZone;
+  const securityGroups = instance!.SecurityGroups!.map(g => g.GroupId);
 
-  let { data: ipAddress } = await axios.get('https://ipv4.icanhazip.com');
+  let { data: ipAddress } = await axios.get<string>('https://ipv4.icanhazip.com');
   ipAddress = ipAddress.trim();
 
   if (securityGroups.length > 1) {
     console.warn('Instance has more than one security group. Please open a GitHub issue for mup-aws-beanstalk');
   }
 
-  let ruleIds = [];
+  let ruleIds: string[] = [];
 
   try {
     const { SecurityGroupRules } = await ec2.authorizeSecurityGroupIngress({
@@ -577,10 +606,11 @@ export async function connectToInstance(api, instanceId, commandLabel) {
           ToPort: 22
         }
       ]
-    }).promise();
+    });
 
-    ruleIds = SecurityGroupRules.map(rule => rule.SecurityGroupRuleId);
+    ruleIds = SecurityGroupRules!.map(rule => rule.SecurityGroupRuleId!);
   } catch (e) {
+    // @ts-ignore
     if (e.code === 'InvalidPermission.Duplicate') {
       // This rule already exists
       // TODO: should we find the rule id so we can remove it, or leave it in
@@ -595,10 +625,10 @@ export async function connectToInstance(api, instanceId, commandLabel) {
     AvailabilityZone: availabilityZone,
     InstanceOSUser: 'ec2-user',
     SSHPublicKey: fs.readFileSync(api.resolvePath(sshKey.publicKey), 'utf-8')
-  }).promise();
+  });
 
   const sshOptions = {
-    host: instance.PublicDnsName,
+    host: instance.PublicDnsName!,
     port: 22,
     username: 'ec2-user',
     privateKey: fs.readFileSync(api.resolvePath(sshKey.privateKey), 'utf-8')
@@ -615,13 +645,13 @@ export async function connectToInstance(api, instanceId, commandLabel) {
       return ec2.revokeSecurityGroupIngress({
         GroupId: securityGroups[0],
         SecurityGroupRuleIds: ruleIds
-      }).promise();
+      });
     }
   };
 }
 
-export async function executeSSHCommand(conn, command) {
-  return new Promise((resolve, reject) => {
+export async function executeSSHCommand(conn: Client, command: string) {
+  return new Promise<{ code: number, output: string }>((resolve, reject) => {
     conn.exec(command, (err, outputStream) => {
       if (err) {
         conn.end();
@@ -632,15 +662,15 @@ export async function executeSSHCommand(conn, command) {
 
       let output = '';
 
-      outputStream.on('data', (data) => {
+      outputStream.on('data', (data: string) => {
         output += data;
       });
 
-      outputStream.stderr.on('data', (data) => {
+      outputStream.stderr.on('data', (data: string) => {
         output += data;
       });
 
-      outputStream.once('close', (code) => {
+      outputStream.once('close', (code: number) => {
         conn.end();
         resolve({ code, output });
       });

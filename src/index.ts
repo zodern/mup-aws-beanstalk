@@ -1,12 +1,13 @@
 import * as _commands from './commands';
 import validator from './validate';
+import { MupConfig, MupApi, MupUtils } from "./types";
 
 export const name = 'beanstalk';
 export const description = 'Deploy Meteor app to AWS Elastic Beanstalk';
 export const commands = _commands;
 
 export const validate = {
-  app(config, utils) {
+  app (config: MupConfig, utils: MupUtils) {
     if (config.app && config.app.type === 'aws-beanstalk') {
       return validator(config, utils);
     }
@@ -15,7 +16,7 @@ export const validate = {
   }
 };
 
-export function prepareConfig(config) {
+export function prepareConfig(config: MupConfig) {
   if (!config.app || config.app.type !== 'aws-beanstalk') {
     return config;
   }
@@ -42,7 +43,7 @@ export function prepareConfig(config) {
   return config;
 }
 
-function isBeanstalkApp(api) {
+function isBeanstalkApp (api: MupApi) {
   const config = api.getConfig();
 
   if (config.app && config.app.type === 'aws-beanstalk') {
@@ -53,42 +54,42 @@ function isBeanstalkApp(api) {
 }
 
 export const hooks = {
-  'post.setup': (api) => {
+  'post.setup': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.setup');
     }
   },
-  'post.deploy': (api) => {
+  'post.deploy': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.deploy');
     }
   },
-  'post.logs': (api) => {
+  'post.logs': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.logs');
     }
   },
-  'post.start': (api) => {
+  'post.start': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.start');
     }
   },
-  'post.stop': (api) => {
+  'post.stop': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.stop');
     }
   },
-  'post.restart': (api) => {
+  'post.restart': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.restart');
     }
   },
-  'post.reconfig': (api) => {
+  'post.reconfig': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.reconfig');
     }
   },
-  'post.status': (api) => {
+  'post.status': (api: MupApi) => {
     if (isBeanstalkApp(api)) {
       return api.runCommand('beanstalk.status');
     }

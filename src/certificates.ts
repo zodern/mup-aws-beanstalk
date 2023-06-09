@@ -2,8 +2,12 @@ import { beanstalk } from './aws';
 import { names } from './utils';
 import { convertToObject } from './eb-config';
 import { waitForEnvReady } from './env-ready';
+import { MupConfig } from "./types";
 
-export default async function ensureSSLConfigured(config, certificateArn) {
+export async function ensureSSLConfigured(
+  config: MupConfig,
+  certificateArn?: string
+) {
   const {
     app,
     environment
@@ -38,13 +42,14 @@ export default async function ensureSSLConfigured(config, certificateArn) {
     .describeConfigurationSettings({
       EnvironmentName: environment,
       ApplicationName: app,
-    })
-    .promise();
+    });
 
-  const current = ConfigurationSettings[0].OptionSettings.reduce(
+  const firstConfig = ConfigurationSettings?.[0];
+  const current = firstConfig?.OptionSettings?.reduce(
     convertToObject,
     {}
   );
+
   const desired = ebConfig.reduce(convertToObject, {});
 
   const needToUpdate = Object.keys(desired).find(
@@ -59,7 +64,6 @@ export default async function ensureSSLConfigured(config, certificateArn) {
     .updateEnvironment({
       EnvironmentName: environment,
       OptionSettings: ebConfig,
-    })
-    .promise();
+    });
   await waitForEnvReady(config, true);
 }

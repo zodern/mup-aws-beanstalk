@@ -1,5 +1,10 @@
-parser: babel-eslint
+parser: @typescript-eslint/parser
 extends: airbnb
+plugins:
+  - react
+  - jsx-a11y
+  - import
+  - @typescript-eslint
 rules:
   comma-dangle: [2, 'never']
   no-plusplus: 0
