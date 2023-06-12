@@ -381,7 +381,7 @@ export async function stop (api: MupApi) {
     EnvironmentName: environment
   });
 
-  const autoScalingGroup = EnvironmentResources.AutoScalingGroups[0].Name;
+  const autoScalingGroup = EnvironmentResources!.AutoScalingGroups![0].Name;
 
   await autoScaling.updateAutoScalingGroup({
     AutoScalingGroupName: autoScalingGroup,
@@ -564,6 +564,7 @@ export async function status (api: MupApi) {
       EnvironmentName: environment
     });
   } catch (e) {
+    // @ts-ignore
     if (e.message.includes('No Environment found for EnvironmentName')) {
       console.log(' AWS Beanstalk environment does not exist');
       return;

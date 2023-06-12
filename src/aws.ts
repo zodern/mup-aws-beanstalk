@@ -1,6 +1,6 @@
 import { IAM } from '@aws-sdk/client-iam';
 import { S3 } from '@aws-sdk/client-s3';
-import { AutoScalingGroup, ElasticBeanstalk } from '@aws-sdk/client-elastic-beanstalk';
+import { ElasticBeanstalk } from '@aws-sdk/client-elastic-beanstalk';
 import { ACM } from '@aws-sdk/client-acm';
 import { AutoScaling } from '@aws-sdk/client-auto-scaling';
 import { CloudWatchEvents } from '@aws-sdk/client-cloudwatch-events';
@@ -15,7 +15,7 @@ import { MupAwsConfig } from "./types";
 export let s3: S3;
 export let beanstalk: ElasticBeanstalk;
 export let iam: IAM;
-export let autoScaling: AutoScalingGroup;
+export let autoScaling: AutoScaling;
 export let acm: ACM;
 export let cloudTrail: CloudTrail;
 export let cloudWatchEvents: CloudWatchEvents;
@@ -31,8 +31,10 @@ const AWS_UPLOAD_TIMEOUT = 1000 * 60 * 60;
 
 export default function configure ({ auth, name, region }: MupAwsConfig) {
   const commonOptions = {
-    accessKeyId: auth.id,
-    secretAccessKey: auth.secret,
+    credentials: {
+      accessKeyId: auth.id,
+      secretAccessKey: auth.secret,
+    },
     region: region || 'us-east-1',
     maxRetries: 25,
     retryDelayOptions: {
