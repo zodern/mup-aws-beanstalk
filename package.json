@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prepare": "npm run build",
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json && copyfiles -u 1 src/assets/* lib",
     "build:watch": "npm run build -s -- -w",
     "lint": "npm run lint:code && npm run lint:docs",
     "lint:docs": "node ./tests/validate-docs.js",
@@ -36,6 +36,7 @@
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "chai": "^4.3.4",
+    "copyfiles": "^2.4.1",
     "eslint": "^8.42.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.27.5",

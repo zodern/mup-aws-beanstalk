@@ -21,6 +21,8 @@ export function prepareConfig(config: MupConfig) {
     return config;
   }
 
+  console.log('Preparing config for AWS Elastic Beanstalk');
+
   const defaultBuildOptions = {
     serverOnly: true
   };

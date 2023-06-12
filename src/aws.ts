@@ -27,9 +27,9 @@ export let ec2InstanceConnect: EC2InstanceConnect;
 /* eslint-enable import/no-mutable-exports */
 
 const MAX_RETRY_DELAY = 1000 * 60 * 2;
-const AWS_UPLOAD_TIMEOUT = 1000 * 60 * 60;
+// const AWS_UPLOAD_TIMEOUT = 1000 * 60 * 60;
 
-export default function configure ({ auth, name, region }: MupAwsConfig) {
+export default function configure ({ auth, name: _name, region }: MupAwsConfig) {
   const commonOptions = {
     credentials: {
       accessKeyId: auth.id,

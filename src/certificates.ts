@@ -2,7 +2,7 @@ import { beanstalk } from './aws';
 import { names } from './utils';
 import { convertToObject } from './eb-config';
 import { waitForEnvReady } from './env-ready';
-import { MupConfig } from "./types";
+import { EBConfigDictionary, MupConfig } from "./types";
 
 export async function ensureSSLConfigured(
   config: MupConfig,
@@ -45,9 +45,9 @@ export async function ensureSSLConfigured(
     });
 
   const firstConfig = ConfigurationSettings?.[0];
-  const current = firstConfig?.OptionSettings?.reduce(
+  const current = firstConfig!.OptionSettings!.reduce(
     convertToObject,
-    {}
+    {} as EBConfigDictionary
   );
 
   const desired = ebConfig.reduce(convertToObject, {});

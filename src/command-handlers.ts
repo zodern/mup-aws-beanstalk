@@ -284,12 +284,13 @@ export async function deploy(api: MupApi) {
 
   await waitForEnvReady(config, true);
 
-  const {
-    Environments
-  } = await beanstalk.describeEnvironments({
-    ApplicationName: app,
-    EnvironmentNames: [environment]
-  });
+  // XXX Is this necessary?
+  // const {
+  //   Environments
+  // } = await beanstalk.describeEnvironments({
+  //   ApplicationName: app,
+  //   EnvironmentNames: [environment]
+  // });
 
   await api.runCommand('beanstalk.clean');
 
@@ -304,7 +305,7 @@ export async function deploy(api: MupApi) {
   });
 
   if (nextVersion.toString() === finalEnvironments![0].VersionLabel) {
-    console.log(chalk.green(`App is running at ${Environments![0].CNAME}`));
+    console.log(chalk.green(`App is running at ${finalEnvironments![0].CNAME}`));
   } else {
     console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
     process.exitCode = 1;
@@ -525,7 +526,7 @@ export async function reconfig (api: MupApi) {
     ApplicationName: app
   });
 
-  if (scalingConfigChanged(ConfigurationSettings![0].OptionSettings, config)) {
+  if (scalingConfigChanged(ConfigurationSettings![0].OptionSettings!, config)) {
     logStep('=> Configuring scaling');
     await beanstalk.updateEnvironment({
       EnvironmentName: environment,

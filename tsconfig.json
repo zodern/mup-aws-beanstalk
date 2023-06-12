@@ -2,13 +2,12 @@
   "compilerOptions": {
     /* Basic Options */
     "target": "es2018",
-    "module": "esNext",
+    "module": "CommonJS",
     "lib": ["esnext", "dom"],
     "allowJs": true,
     "checkJs": false,
     "jsx": "preserve",
     "incremental": true,
-    "noEmit": true,
 
     /* Strict Type-Checking Options */
     "strict": true,
@@ -35,7 +34,7 @@
     "preserveSymlinks": true,
 
     /* Build Options */
-    "outDir": "lib",
+    "outDir": "./lib",
     "rootDir": "./src",
 
   },

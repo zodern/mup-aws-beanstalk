@@ -101,3 +101,14 @@ export type MupApi = {
 };
 
 export type Buckets = Exclude<ListBucketsCommandOutput["Buckets"], undefined>
+
+export type EBConfigElement = {
+  Namespace: string;
+  OptionName: string;
+  Value: string;
+  ResourceName?: string;
+}
+
+export type EBConfigDictionary = {
+  [key: string]: EBConfigElement;
+}
