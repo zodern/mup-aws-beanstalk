@@ -62,6 +62,7 @@ import {
   createDesiredConfig,
   prepareUpdateEnvironment,
   scalingConfig,
+  getEnvTierConfig,
   scalingConfigChanged
 } from './eb-config';
 
@@ -69,6 +70,8 @@ import {
   waitForEnvReady,
   waitForHealth
 } from './env-ready';
+import { startLogStreamListener, stopLogStreamListener } from "./deployment-logs";
+import { EventDescription } from "@aws-sdk/client-elastic-beanstalk";
 
 export async function setup (api: MupApi) {
   const config = api.getConfig();
@@ -218,7 +221,6 @@ export async function deploy(api: MupApi) {
     environment
   } = names(config);
 
-
   const version = await largestVersion(api);
   const nextVersion = version + 1;
 
@@ -267,12 +269,18 @@ export async function deploy(api: MupApi) {
     toUpdate
   } = await prepareUpdateEnvironment(api);
 
+  const eventLog: EventDescription[] = []
+
   if (api.verbose) {
     console.log('EB Config changes:');
     console.dir({
       toRemove,
       toUpdate
     });
+
+    if (config.app.streamLogs) {
+      await startLogStreamListener(api, eventLog);
+    }
   }
 
   await beanstalk.updateEnvironment({
@@ -282,7 +290,9 @@ export async function deploy(api: MupApi) {
     OptionsToRemove: toRemove
   });
 
-  await waitForEnvReady(config, true);
+  await waitForEnvReady(config, true, eventLog);
+
+  stopLogStreamListener();
 
   // XXX Is this necessary?
   // const {
@@ -305,7 +315,11 @@ export async function deploy(api: MupApi) {
   });
 
   if (nextVersion.toString() === finalEnvironments![0].VersionLabel) {
-    console.log(chalk.green(`App is running at ${finalEnvironments![0].CNAME}`));
+    if (config.app.envType === "worker") {
+      console.log(chalk.green(`Worker is running.`));
+    } else {
+      console.log(chalk.green(`App is running at ${finalEnvironments![0].CNAME}`));
+    }
   } else {
     console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
     process.exitCode = 1;
@@ -365,7 +379,7 @@ export async function start (api: MupApi) {
     DesiredCapacity: minInstances
   });
 
-  await waitForHealth(config);
+  await waitForHealth(config, undefined, false);
 }
 
 export async function stop (api: MupApi) {
@@ -391,7 +405,7 @@ export async function stop (api: MupApi) {
     DesiredCapacity: 0
   });
 
-  await waitForHealth(config, 'Grey');
+  await waitForHealth(config, 'Grey', false);
 }
 
 export async function restart (api: MupApi) {
@@ -464,7 +478,10 @@ export async function reconfig (api: MupApi) {
     EnvironmentNames: [environment]
   });
 
-  if (!Environments!.find(env => env.Status !== 'Terminated')) {
+  const environmentExists = Environments!.find(
+    env => env.Status !== 'Terminated')
+
+  if (!environmentExists) {
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
       api.getSettings(),
@@ -480,12 +497,17 @@ export async function reconfig (api: MupApi) {
     const platformArn = await selectPlatformArn();
 
     const [version] = await ebVersions(api);
+
+    // Whether this is a web or worker environment
+    const envTierConfig = getEnvTierConfig(config.app.envType);
+
     await beanstalk.createEnvironment({
       ApplicationName: app,
       EnvironmentName: environment,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
       PlatformArn: platformArn,
+      Tier: envTierConfig,
       OptionSettings: desiredEbConfig.OptionSettings
     });
 
@@ -629,6 +651,9 @@ export async function status (api: MupApi) {
 
 export async function ssl (api: MupApi) {
   const config = api.getConfig();
+
+  // Worker envs don't need ssl
+  if (config.app.envType !== 'webapp') return;
 
   await waitForEnvReady(config, true);
 

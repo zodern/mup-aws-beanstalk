@@ -1,4 +1,4 @@
-import { ListBucketsCommandOutput } from "@aws-sdk/client-s3";
+import { ListBucketsCommandOutput } from '@aws-sdk/client-s3';
 
 export type Env = {
   PORT?: number;
@@ -11,6 +11,7 @@ export type MupAwsConfig = {
   path: string;
   type: string;
   envName: string;
+  envType: 'webapp' | 'worker';
   buildOptions: {
     buildLocation: string;
     serverOnly?: boolean;
@@ -33,6 +34,7 @@ export type MupAwsConfig = {
   region: string;
   minInstances: number;
   maxInstances: number;
+  streamLogs?: boolean;
   instanceType: string;
   gracefulShutdown?: boolean;
   longEnvVars?: boolean;
@@ -100,7 +102,7 @@ export type MupApi = {
   getBasePath: MupUtils['getBasePath'];
 };
 
-export type Buckets = Exclude<ListBucketsCommandOutput["Buckets"], undefined>
+export type Buckets = Exclude<ListBucketsCommandOutput['Buckets'], undefined>
 
 export type EBConfigElement = {
   Namespace: string;

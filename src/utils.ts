@@ -18,6 +18,9 @@ import { Target } from "@aws-sdk/client-cloudwatch-events";
 export function logStep(message: string) {
   console.log(chalk.blue(message));
 }
+export function logStreamEvent(message: string) {
+  console.log(chalk.dim(message));
+}
 
 export function shouldRebuild(bundlePath: string, useCachedBuild?: boolean) {
   if (fs.existsSync(bundlePath) && useCachedBuild) {

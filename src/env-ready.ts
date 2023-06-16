@@ -9,7 +9,7 @@ import {
   handleThrottlingException
 } from './recheck';
 import { MupConfig } from "./types";
-import { EnvironmentDescription } from "@aws-sdk/client-elastic-beanstalk";
+import { EnvironmentDescription, EventDescription } from "@aws-sdk/client-elastic-beanstalk";
 
 export async function getLastEvent(config: MupConfig) {
   const {
@@ -30,7 +30,11 @@ export async function getLastEvent(config: MupConfig) {
   return Events[0].EventDate;
 }
 
-export async function showEvents (config: MupConfig, lastEventDate?: Date) {
+export async function showEvents (
+  config: MupConfig,
+  eventHistory: EventDescription[],
+  lastEventDate?: Date
+) {
   const {
     environment,
     app
@@ -53,6 +57,7 @@ export async function showEvents (config: MupConfig, lastEventDate?: Date) {
       return;
     }
     console.log(`  Env Event: ${event.Message}`);
+    eventHistory.push(event);
   });
 
   return Events[0].EventDate ? new Date(Events[0].EventDate): undefined;
@@ -62,7 +67,8 @@ async function checker (
   config: MupConfig,
   prop: keyof EnvironmentDescription,
   wantedValue: any,
-  showProgress?: boolean
+  showProgress: boolean,
+  eventHistory: EventDescription[]
 ) {
   const {
     environment,
@@ -111,7 +117,7 @@ async function checker (
 
       if (showProgress) {
         try {
-          lastEventDate = await showEvents(config, lastEventDate);
+          lastEventDate = await showEvents(config, eventHistory, lastEventDate);
         } catch (e) {
           if (checkForThrottlingException(e)) {
             handleThrottlingException();
@@ -128,10 +134,18 @@ async function checker (
   });
 }
 
-export async function waitForEnvReady (config: MupConfig, showProgress?: boolean) {
-  await checker(config, 'Status', 'Ready', showProgress);
+export async function waitForEnvReady (
+  config: MupConfig,
+  showProgress: boolean,
+  eventHistory: EventDescription[] = [],
+) {
+  await checker(config, 'Status', 'Ready', showProgress, eventHistory);
 }
 
-export async function waitForHealth (config: MupConfig, health = 'Green', showProgress?: boolean) {
-  await checker(config, 'Health', health, showProgress);
+export async function waitForHealth (
+  config: MupConfig,
+  health = 'Green',
+  showProgress: boolean
+) {
+  await checker(config, 'Health', health, showProgress, []);
 }

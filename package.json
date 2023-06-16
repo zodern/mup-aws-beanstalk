@@ -53,6 +53,7 @@
     "@aws-sdk/client-auto-scaling": "^3.350.0",
     "@aws-sdk/client-cloudtrail": "^3.348.0",
     "@aws-sdk/client-cloudwatch-events": "^3.348.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.353.0",
     "@aws-sdk/client-ec2": "^3.348.0",
     "@aws-sdk/client-ec2-instance-connect": "^3.348.0",
     "@aws-sdk/client-elastic-beanstalk": "^3.348.0",

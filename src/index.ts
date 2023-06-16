@@ -35,6 +35,7 @@ export function prepareConfig(config: MupConfig) {
   config.app.maxInstances = config.app.maxInstances || config.app.minInstances;
 
   config.app.instanceType = config.app.instanceType || 't2.micro';
+  config.app.envType = config.app.envType || 'webapp';
 
   config.app.env = config.app.env || {};
   config.app.env.PORT = 8081;

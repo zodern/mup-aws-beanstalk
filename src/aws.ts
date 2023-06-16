@@ -4,6 +4,7 @@ import { ElasticBeanstalk } from '@aws-sdk/client-elastic-beanstalk';
 import { ACM } from '@aws-sdk/client-acm';
 import { AutoScaling } from '@aws-sdk/client-auto-scaling';
 import { CloudWatchEvents } from '@aws-sdk/client-cloudwatch-events';
+import { CloudWatchLogs } from '@aws-sdk/client-cloudwatch-logs';
 import { CloudTrail } from '@aws-sdk/client-cloudtrail';
 import { EC2InstanceConnect } from '@aws-sdk/client-ec2-instance-connect';
 import { STS } from '@aws-sdk/client-sts';
@@ -22,6 +23,7 @@ export let cloudWatchEvents: CloudWatchEvents;
 export let sts: STS;
 export let ssm: SSM;
 export let ec2: EC2;
+export let logs: CloudWatchLogs;
 export let ec2InstanceConnect: EC2InstanceConnect;
 
 /* eslint-enable import/no-mutable-exports */
@@ -56,5 +58,6 @@ export default function configure ({ auth, name: _name, region }: MupAwsConfig) 
   cloudWatchEvents = new CloudWatchEvents({ ...commonOptions });
   ssm = new SSM({ ...commonOptions });
   ec2 = new EC2({ ...commonOptions });
+  logs = new CloudWatchLogs({ ...commonOptions });
   ec2InstanceConnect = new EC2InstanceConnect({ ...commonOptions });
 }

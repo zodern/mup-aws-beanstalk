@@ -6,7 +6,7 @@ import { uploadEnvFile } from './upload';
 import { names } from './utils';
 import { largestEnvVersion } from './versions';
 import { EBConfigDictionary, EBConfigElement, MeteorSettings, MupApi, MupAwsConfig, MupConfig } from "./types";
-import { ConfigurationOptionSetting } from "@aws-sdk/client-elastic-beanstalk";
+import { ConfigurationOptionSetting, EnvironmentTier } from "@aws-sdk/client-elastic-beanstalk";
 
 export function createDesiredConfig(
   mupConfig: MupConfig,
@@ -16,6 +16,7 @@ export function createDesiredConfig(
   const {
     env,
     instanceType,
+    streamLogs,
     customBeanstalkConfig = []
   } = mupConfig.app;
   const {
@@ -106,6 +107,14 @@ export function createDesiredConfig(
       Value: '75'
     }]
   };
+
+  if (streamLogs) {
+    config.OptionSettings.push({
+      Namespace: 'aws:elasticbeanstalk:cloudwatch:logs',
+      OptionName: 'StreamLogs',
+      Value: 'true'
+    });
+  }
 
   const settingsString = JSON.stringify(settings);
 
@@ -282,5 +291,19 @@ export async function prepareUpdateEnvironment(api: MupApi) {
   return {
     toRemove,
     toUpdate
+  };
+}
+
+export function getEnvTierConfig (envType: 'webapp' | 'worker'): EnvironmentTier {
+  if (envType === 'webapp') {
+    return {
+      Name: "WebServer",
+      Type: "Standard"
+    };
+  }
+
+  return {
+    Name: "Worker",
+    Type: "SQS/HTTP"
   };
 }

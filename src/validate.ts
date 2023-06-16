@@ -6,6 +6,7 @@ const schema = joi.object().keys({
   path: joi.string().min(1).required(),
   type: joi.string().required(),
   envName: joi.string().min(1),
+  envType: joi.string().valid('webserver', 'worker'),
   buildOptions: joi.object().keys({
     serverOnly: joi.bool(),
     debug: joi.bool(),
@@ -24,6 +25,7 @@ const schema = joi.object().keys({
   }).required(),
   sslDomains: joi.array().items(joi.string()),
   forceSSL: joi.bool(),
+  streamLogs: joi.bool(),
   region: joi.string(),
   minInstances: joi.number().min(1).required(),
   maxInstances: joi.number().min(1),
