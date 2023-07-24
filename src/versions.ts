@@ -4,8 +4,9 @@ import {
   s3
 } from './aws';
 import { names } from './utils';
+import { MupApi } from "./types";
 
-export async function ebVersions(api) {
+export async function ebVersions(api: MupApi) {
   const config = api.getConfig();
   const versions = [0];
   const {
@@ -14,13 +15,14 @@ export async function ebVersions(api) {
 
   const appVersions = await beanstalk.describeApplicationVersions({
     ApplicationName: app
-  }).promise();
+  });
 
-  if (appVersions.ApplicationVersions.length > 0) {
+  if (appVersions.ApplicationVersions
+    && appVersions.ApplicationVersions.length > 0) {
     appVersions.ApplicationVersions.forEach(({
       VersionLabel
     }) => {
-      const parsedVersion = parseInt(VersionLabel, 10);
+      const parsedVersion = parseInt(VersionLabel || "0", 10);
 
       versions.push(parsedVersion);
     });
@@ -29,23 +31,24 @@ export async function ebVersions(api) {
   return versions.sort((a, b) => b - a);
 }
 
-export async function s3Versions(api, prefix) {
+export async function s3Versions (api: MupApi, providedPrefix?: string) {
   const config = api.getConfig();
   const versions = [0];
   const {
     bucket,
     bundlePrefix
   } = names(config);
-  prefix = prefix || bundlePrefix;
+  const prefix = providedPrefix || bundlePrefix;
 
-  const uploadedBundles = await s3.listObjectsV2({
+  const uploadedBundles = await s3.listObjects({
     Bucket: bucket,
     Prefix: prefix
-  }).promise();
+  });
 
-
-  if (uploadedBundles.Contents.length > 0) {
+  if (uploadedBundles.Contents
+    && uploadedBundles.Contents.length > 0) {
     uploadedBundles.Contents.forEach((bundle) => {
+      if (!bundle.Key) return;
       const bundleVersion = parseInt(bundle.Key.split(prefix)[1], 10);
 
       versions.push(bundleVersion);
@@ -55,7 +58,7 @@ export async function s3Versions(api, prefix) {
   return versions.sort((a, b) => b - a);
 }
 
-export async function largestVersion(api) {
+export async function largestVersion (api: MupApi) {
   let [version] = await s3Versions(api);
   const [appVersion] = await ebVersions(api);
 
@@ -66,7 +69,7 @@ export async function largestVersion(api) {
   return version;
 }
 
-export async function largestEnvVersion(api) {
+export async function largestEnvVersion (api: MupApi) {
   const versions = [0];
   const prefix = 'env/';
   const config = api.getConfig();
@@ -78,11 +81,12 @@ export async function largestEnvVersion(api) {
   const uploadedBundles = await s3.listObjectsV2({
     Bucket: bucketName,
     Prefix: prefix
-  }).promise();
+  });
 
-
-  if (uploadedBundles.Contents.length > 0) {
+  if (uploadedBundles.Contents
+    && uploadedBundles.Contents.length > 0) {
     uploadedBundles.Contents.forEach((bundle) => {
+      if (!bundle.Key) return;
       const bundleVersion = parseInt(bundle.Key.split(prefix)[1], 10);
 
       versions.push(bundleVersion);
@@ -92,14 +96,14 @@ export async function largestEnvVersion(api) {
   return versions.sort((a, b) => b - a)[0];
 }
 
-export async function oldEnvVersions(api) {
+export async function oldEnvVersions (api: MupApi) {
   const keep = 10;
   const versions = await s3Versions(api, 'env/');
 
   return versions.slice(keep);
 }
 
-export async function oldVersions(api) {
+export async function oldVersions (api: MupApi) {
   const keep = api.getConfig().app.oldVersions;
   const appVersions = await ebVersions(api);
   const bundleVersions = await s3Versions(api);

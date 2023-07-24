@@ -4,8 +4,9 @@ import ejs from 'ejs';
 import { round } from 'lodash';
 import path from 'path';
 import { getNodeVersion, logStep, names } from './utils';
+import { MupApi, MupAwsConfig } from "./types";
 
-function copyFolderSync(src, dest) {
+function copyFolderSync(src: string, dest: string) {
   if (!fs.existsSync(src)) return;
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
 
@@ -27,14 +28,14 @@ function copyFolderSync(src, dest) {
   });
 }
 
-function copy(source, destination, vars = {}) {
+function copy(source: string, destination: string, vars = {}) {
   let contents = fs.readFileSync(source).toString();
 
   contents = ejs.render(
     contents,
     {
       ...vars,
-      padScript(content, spaces) {
+      padScript(content: string, spaces: number) {
         const padding = ''.padStart(spaces, ' ');
         return content.split('\n').map(line => padding + line).join('\n');
       }
@@ -47,7 +48,7 @@ function copy(source, destination, vars = {}) {
   fs.writeFileSync(destination, contents);
 }
 
-export function injectFiles(api, name, version, appConfig) {
+export function injectFiles(api: MupApi, name: string, version: number, appConfig: MupAwsConfig) {
   const {
     yumPackages,
     forceSSL,
@@ -87,6 +88,7 @@ export function injectFiles(api, name, version, appConfig) {
     try {
       fs.mkdirSync(api.resolvePath(bundlePath, 'bundle', folder));
     } catch (e) {
+      // @ts-ignore
       if (e.code !== 'EEXIST') {
         throw e;
       }
@@ -165,7 +167,7 @@ export function injectFiles(api, name, version, appConfig) {
   }
 }
 
-export function archiveApp(buildLocation, api) {
+export function archiveApp(buildLocation: string, api: MupApi) {
   const bundlePath = api.resolvePath(buildLocation, 'bundle.zip');
 
   try {
@@ -189,8 +191,8 @@ export function archiveApp(buildLocation, api) {
     archive.pipe(output);
     output.once('close', resolve);
 
-    archive.once('error', (err) => {
-      logStep('=> Archiving failed:', err.message);
+    archive.once('error', (err: Error) => {
+      logStep(`=> Archiving failed: ${err.message}`);
       reject(err);
     });
 

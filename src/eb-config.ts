@@ -5,11 +5,18 @@ import { createEnvFile } from './env-settings';
 import { uploadEnvFile } from './upload';
 import { names } from './utils';
 import { largestEnvVersion } from './versions';
+import { EBConfigDictionary, EBConfigElement, MeteorSettings, MupApi, MupAwsConfig, MupConfig } from "./types";
+import { ConfigurationOptionSetting, EnvironmentTier } from "@aws-sdk/client-elastic-beanstalk";
 
-export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
+export function createDesiredConfig(
+  mupConfig: MupConfig,
+  settings: MeteorSettings,
+  longEnvVarsVersion: number | false
+) {
   const {
     env,
     instanceType,
+    streamLogs,
     customBeanstalkConfig = []
   } = mupConfig.app;
   const {
@@ -101,6 +108,14 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
     }]
   };
 
+  if (streamLogs) {
+    config.OptionSettings.push({
+      Namespace: 'aws:elasticbeanstalk:cloudwatch:logs',
+      OptionName: 'StreamLogs',
+      Value: 'true'
+    });
+  }
+
   const settingsString = JSON.stringify(settings);
 
   if (longEnvVarsVersion) {
@@ -134,21 +149,24 @@ export function createDesiredConfig(mupConfig, settings, longEnvVarsVersion) {
   return config;
 }
 
-export function scalingConfigChanged(currentConfig, mupConfig) {
+export function scalingConfigChanged (
+  currentConfig: (EBConfigElement | ConfigurationOptionSetting | undefined)[],
+  mupConfig: MupConfig
+) {
   const {
     minInstances,
     maxInstances
   } = mupConfig.app;
 
-  let currentMinInstances = 0;
-  let currentMaxInstances = 0;
+  let currentMinInstances = "0";
+  let currentMaxInstances = "0";
 
   currentConfig.forEach((item) => {
-    if (item.Namespace === 'aws:autoscaling:asg') {
-      if (item.OptionName === 'MinSize') {
-        currentMinInstances = item.Value;
-      } else if (item.OptionName === 'MaxSize') {
-        currentMaxInstances = item.Value;
+    if (item!.Namespace === 'aws:autoscaling:asg') {
+      if (item!.OptionName === 'MinSize') {
+        currentMinInstances = item!.Value!;
+      } else if (item!.OptionName === 'MaxSize') {
+        currentMaxInstances = item!.Value!;
       }
     }
   });
@@ -157,7 +175,7 @@ export function scalingConfigChanged(currentConfig, mupConfig) {
     currentMaxInstances !== maxInstances.toString();
 }
 
-export function scalingConfig({ minInstances, maxInstances }) {
+export function scalingConfig({ minInstances, maxInstances }: MupAwsConfig) {
   return {
     OptionSettings: [
       {
@@ -173,45 +191,51 @@ export function scalingConfig({ minInstances, maxInstances }) {
   };
 }
 
-export function convertToObject(result, option) {
-  result[`${option.Namespace}-${option.OptionName}`] = option;
+export function convertToObject (
+  result: EBConfigDictionary,
+  option: EBConfigElement | ConfigurationOptionSetting | undefined
+) {
+  if (!option) {
+    return result;
+  }
+
+  result[`${option.Namespace!}-${option.OptionName!}`] = option as EBConfigElement;
 
   return result;
 }
 
-export function mergeConfigs(config1, config2) {
-  config1 = config1.reduce(convertToObject, {});
+export function mergeConfigs (config1: EBConfigElement[], config2: EBConfigElement[]) {
+  const configDict = config1.reduce(convertToObject, {} as EBConfigDictionary);
 
   config2.forEach((option) => {
-    const key = [`${option.Namespace}-${option.OptionName}`];
-    config1[key] = option;
+    const key = `${option.Namespace}-${option.OptionName}`;
+    configDict[key] = option;
   });
 
-  return Object.values(config1);
+  return Object.values(configDict);
 }
 
-export function diffConfig(current, desired) {
-  current = current.reduce(convertToObject, {});
+export function diffConfig (current: EBConfigElement[], desired: EBConfigElement[]) {
+  const currentConfigDict = current.reduce(convertToObject, {} as EBConfigDictionary);
+  const desiredConfigDict = desired.reduce(convertToObject, {} as EBConfigDictionary);
 
-  desired = desired.reduce(convertToObject, {});
-
-  const toRemove = difference(Object.keys(current), Object.keys(desired))
+  const toRemove = difference(Object.keys(currentConfigDict), Object.keys(desiredConfigDict))
     .filter(key => key.indexOf('aws:elasticbeanstalk:application:environment-') === 0)
     .map((key) => {
-      const option = current[key];
+      const option = currentConfigDict[key];
       return {
         Namespace: option.Namespace,
         OptionName: option.OptionName
       };
     });
 
-  const toUpdate = Object.keys(desired).filter((key) => {
-    if (key in current && current[key].Value === desired[key].Value) {
+  const toUpdate = Object.keys(desiredConfigDict).filter((key) => {
+    if (key in currentConfigDict && currentConfigDict[key].Value === desiredConfigDict[key].Value) {
       return false;
     }
 
     return true;
-  }).map(key => desired[key]);
+  }).map(key => desiredConfigDict[key]);
 
   return {
     toRemove,
@@ -219,7 +243,7 @@ export function diffConfig(current, desired) {
   };
 }
 
-export async function prepareUpdateEnvironment(api) {
+export async function prepareUpdateEnvironment(api: MupApi) {
   const config = api.getConfig();
   const {
     app,
@@ -231,7 +255,7 @@ export async function prepareUpdateEnvironment(api) {
   } = await beanstalk.describeConfigurationSettings({
     EnvironmentName: environment,
     ApplicationName: app
-  }).promise();
+  });
   const { longEnvVars } = config.app;
   let nextEnvVersion = 0;
   let envSettingsChanged;
@@ -240,8 +264,10 @@ export async function prepareUpdateEnvironment(api) {
   if (longEnvVars) {
     const currentEnvVersion = await largestEnvVersion(api);
     const currentSettings = await downloadEnvFile(bucket, currentEnvVersion);
+
     desiredSettings = createEnvFile(config.app.env, api.getSettings());
     envSettingsChanged = currentSettings !== desiredSettings;
+
     if (envSettingsChanged) {
       nextEnvVersion = currentEnvVersion + 1;
       await uploadEnvFile(bucket, nextEnvVersion, desiredSettings);
@@ -258,12 +284,26 @@ export async function prepareUpdateEnvironment(api) {
     toRemove,
     toUpdate
   } = diffConfig(
-    ConfigurationSettings[0].OptionSettings,
+    ConfigurationSettings![0].OptionSettings! as EBConfigElement[],
     desiredEbConfig.OptionSettings
   );
 
   return {
     toRemove,
     toUpdate
+  };
+}
+
+export function getEnvTierConfig (envType: 'webapp' | 'worker'): EnvironmentTier {
+  if (envType === 'webapp') {
+    return {
+      Name: "WebServer",
+      Type: "Standard"
+    };
+  }
+
+  return {
+    Name: "Worker",
+    Type: "SQS/HTTP"
   };
 }

@@ -8,6 +8,7 @@ Features:
 - Meteor settings.json
 - Zero downtime deploys
 - Automatically uses the correct node version
+- Worker environments
 
 [Getting Started Guide](./docs/getting-started.md)
 

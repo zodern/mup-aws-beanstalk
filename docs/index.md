@@ -78,7 +78,16 @@ module.exports = {
 
         // (optional, default is "mup-env-<app name>")
         // Name of AWS Elastic Beanstalk environment
-        envName: 'production', 
+        envName: 'production',
+
+        // (optional, default is "webapp")
+        // Type (or "tier") of the environment. Set it to "worker"
+        // to make a worker environment that has no web-facing load-
+        // balancer and only responds to SQS queue messages.
+        // This will also make the SSL options do nothing.
+        // Read more at:
+        // https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features-managing-env-tiers.html
+        envType: "webapp"
 
         // (optional) Packages to install with the yum package manager
         yumPackages: {
@@ -94,8 +103,11 @@ module.exports = {
         // (optional) Send a SIGTERM signal to the app instances 30 seconds before they will be shut down.
         gracefulShutdown: true,
 
-        // (optional) Supports large environment variables and settings.json by storing them in s3. 
+        // (optional) Supports large environment variables and settings.json by storing them in s3.
         longEnvVars: true,
+
+        // (optional) Enable log streamin to CloudWatch, and to the terminal output while deploying when `verbose` is also active.
+        streamLogs: false,
 
         // (optional, default is 3) Number of old application versions to keep
         oldVersions: 3,
@@ -150,7 +162,7 @@ Changes to `yumPackages`, `forceSSL`, `buildOptions`, and `longEnvVars` requires
 - `mup start` Scales the app back up after being stopped
 - `mup restart` Restarts the app
 - `mup beanstalk events` View events from the app's Beanstalk enviroment. Useful when troubleshooting problems.
-- `mup beanstalk clean` Removes old application versions from s3 and Beanstalk. Is automatically run by `mup deploy` 
+- `mup beanstalk clean` Removes old application versions from s3 and Beanstalk. Is automatically run by `mup deploy`
 - `mup beanstalk ssl` Sets up SSL and shows you it's current status. Automatically run by `mup reconfig` and `mup deploy`
 - `mup beanstalk status` View the app's and server's health and http request stats
 
@@ -159,7 +171,7 @@ Changes to `yumPackages`, `forceSSL`, `buildOptions`, and `longEnvVars` requires
 AWS Elastic Beanstalk is free, but you do pay for the services it uses, including:
 
 - EC2 Instances. By default, it uses `t2.micro`, which costs $8.50/month($0.012 / hour). While the Beanstalk environment is updating, or a new version is being deployed, 25% additional servers will be used.
-- Application Load Balancer. Pricing details are at https://aws.amazon.com/elasticloadbalancing/pricing/
+- Application Load Balancer (when not using worker environment type). Pricing details are at https://aws.amazon.com/elasticloadbalancing/pricing/
 - S3. 3 - 4 app bundles are stored on s3. Each deploy will make 2 list requests and upload 1 file. Beanstalk might store additional files on s3.
 
 Graceful Shutdown uses the following services:
@@ -176,7 +188,7 @@ This does not apply when changing the instance type. Instead, Beanstalk terminat
 
 ## Load balancing
 
-Load balancing is automatically configured and supports web sockets and sticky sessions.
+Load balancing for web-facing apps is automatically configured and supports web sockets and sticky sessions.
 
 ## Scale
 

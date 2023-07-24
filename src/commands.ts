@@ -1,10 +1,11 @@
 import * as commandHandlers from './command-handlers';
 import configure from './aws';
+import { MupApi } from "./types";
 
 let prepared = false;
 
-function prepare(commandHandler) {
-  return function handler(api) {
+function prepare(commandHandler: Function) {
+  return function handler (api: MupApi) {
     if (!prepared) {
       configure(api.getConfig().app);
       prepared = true;
@@ -21,7 +22,7 @@ export const setup = {
 
 export const deploy = {
   description: 'Deploy app to AWS Elastic Beanstalk',
-  builder(subYargs) {
+  builder(subYargs: any) {
     return subYargs.option('cached-build', {
       description: 'Use build from previous deploy',
       boolean: true
@@ -32,7 +33,7 @@ export const deploy = {
 
 export const logs = {
   description: 'View app\'s logs',
-  builder(yargs) {
+  builder(yargs: any) {
     return yargs
       .strict(false)
       .option('tail', {
@@ -105,7 +106,7 @@ export const status = {
 export const shell = {
   name: 'shell [instance-id]',
   description: 'Open production Meteor shell',
-  builder(yargs) {
+  builder(yargs: any) {
     yargs.positional('instance-id', {
       description: 'Instance id. If not provided, will show a list of instances'
     }).strict(false);
@@ -116,7 +117,7 @@ export const shell = {
 export const debug = {
   name: 'debug [instance-id]',
   description: 'Connect your local Node developer tools',
-  builder(yargs) {
+  builder(yargs: any) {
     yargs.positional('instance-id', {
       description: 'Instance id. If not provided, will show a list of instances'
     }).strict(false);

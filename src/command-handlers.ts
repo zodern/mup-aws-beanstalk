@@ -7,7 +7,7 @@ import {
   autoScaling,
   cloudTrail
 } from './aws';
-import updateSSLConfig from './certificates';
+import { ensureSSLConfigured } from './certificates';
 import {
   rolePolicy,
   trailBucketPolicy,
@@ -57,10 +57,12 @@ import {
   oldEnvVersions
 } from './versions';
 import { createEnvFile } from './env-settings';
+import { MupApi } from "./types";
 import {
   createDesiredConfig,
   prepareUpdateEnvironment,
   scalingConfig,
+  getEnvTierConfig,
   scalingConfigChanged
 } from './eb-config';
 
@@ -68,8 +70,10 @@ import {
   waitForEnvReady,
   waitForHealth
 } from './env-ready';
+import { startLogStreamListener, stopLogStreamListener } from "./deployment-logs";
+import { EventDescription } from "@aws-sdk/client-elastic-beanstalk";
 
-export async function setup(api) {
+export async function setup (api: MupApi) {
   const config = api.getConfig();
   const appConfig = config.app;
 
@@ -91,11 +95,13 @@ export async function setup(api) {
   logStep('=> Setting up');
 
   // Create bucket if needed
-  const {
-    Buckets
-  } = await s3.listBuckets().promise();
+  const listBucketResult = await s3.listBuckets({});
+  const Buckets = listBucketResult.Buckets!;
 
-  const beanstalkBucketCreated = await ensureBucketExists(Buckets, bucketName, appConfig.region);
+  const beanstalkBucketCreated = await ensureBucketExists(
+    Buckets,
+    bucketName,
+    appConfig.region);
 
   if (beanstalkBucketCreated) {
     console.log('  Created Bucket');
@@ -105,18 +111,18 @@ export async function setup(api) {
 
   // Create role and instance profile
   await ensureRoleExists(instanceProfile, rolePolicy);
-  await ensureInstanceProfileExists(config, instanceProfile);
-  await ensurePoliciesAttached(config, instanceProfile, [
+  await ensureInstanceProfileExists(instanceProfile);
+  await ensurePoliciesAttached(instanceProfile, [
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier',
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker',
     'arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier',
     ...appConfig.gracefulShutdown ? ['arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'] : []
   ]);
-  await ensureRoleAdded(config, instanceProfile, instanceProfile);
+  await ensureRoleAdded(instanceProfile, instanceProfile);
 
   // Create role used by enhanced health
   await ensureRoleExists(serviceRoleName, serviceRole);
-  await ensurePoliciesAttached(config, serviceRoleName, [
+  await ensurePoliciesAttached(serviceRoleName, [
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth',
     'arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService'
   ]);
@@ -132,17 +138,15 @@ export async function setup(api) {
   }
 
   // Create beanstalk application if needed
-  const {
-    Applications
-  } = await beanstalk.describeApplications().promise();
+  const { Applications } = await beanstalk.describeApplications({});
 
-  if (!Applications.find(app => app.ApplicationName === appName)) {
+  if (!Applications?.find(app => app.ApplicationName === appName)) {
     const params = {
       ApplicationName: appName,
       Description: `App "${appConfig.name}" managed by Meteor Up`
     };
 
-    await beanstalk.createApplication(params).promise();
+    await beanstalk.createApplication(params);
     console.log('  Created Beanstalk application');
   }
 
@@ -151,7 +155,7 @@ export async function setup(api) {
 
     const existingBucket = findBucketWithPrefix(Buckets, trailBucketPrefix);
     const trailBucketName = existingBucket ?
-      existingBucket.Name :
+      existingBucket.Name! :
       createUniqueName(trailBucketPrefix);
     const region = appConfig.region || 'us-east-1';
     const accountId = await getAccountId();
@@ -170,17 +174,15 @@ export async function setup(api) {
       ]
     };
 
-    const {
-      trailList
-    } = await cloudTrail.describeTrails(params).promise();
+    const { trailList } = await cloudTrail.describeTrails(params);
 
-    if (trailList.length === 0) {
+    if (trailList!.length === 0) {
       const createParams = {
         Name: trailName,
         S3BucketName: trailBucketName
       };
 
-      await cloudTrail.createTrail(createParams).promise();
+      await cloudTrail.createTrail(createParams);
 
       console.log('  Created CloudTrail trail');
     }
@@ -200,7 +202,7 @@ export async function setup(api) {
     }
 
     const target = deregisterEventTarget(environmentName, eventTargetRoleName, accountId, region);
-    const createdTarget = await ensureRuleTargetExists(deregisterRuleName, target, accountId);
+    const createdTarget = await ensureRuleTargetExists(deregisterRuleName, target);
 
     if (createdTarget) {
       console.log('  Created target for Cloud Watch rule');
@@ -208,7 +210,7 @@ export async function setup(api) {
   }
 }
 
-export async function deploy(api) {
+export async function deploy(api: MupApi) {
   await api.runCommand('beanstalk.setup');
 
   const config = api.getConfig();
@@ -218,7 +220,6 @@ export async function deploy(api) {
     bundlePrefix,
     environment
   } = names(config);
-
 
   const version = await largestVersion(api);
   const nextVersion = version + 1;
@@ -244,7 +245,7 @@ export async function deploy(api) {
   logStep('=> Uploading bundle');
 
   const key = `${bundlePrefix}${nextVersion}`;
-  await upload(config.app, bucket, `${bundlePrefix}${nextVersion}`, bundlePath);
+  await upload(bucket, `${bundlePrefix}${nextVersion}`, bundlePath);
 
   logStep('=> Creating version');
 
@@ -256,7 +257,7 @@ export async function deploy(api) {
       S3Bucket: bucket,
       S3Key: key
     }
-  }).promise();
+  });
 
   await api.runCommand('beanstalk.reconfig');
   await waitForEnvReady(config, true);
@@ -268,12 +269,18 @@ export async function deploy(api) {
     toUpdate
   } = await prepareUpdateEnvironment(api);
 
+  const eventLog: EventDescription[] = []
+
   if (api.verbose) {
     console.log('EB Config changes:');
     console.dir({
       toRemove,
       toUpdate
     });
+
+    if (config.app.streamLogs) {
+      await startLogStreamListener(api, eventLog);
+    }
   }
 
   await beanstalk.updateEnvironment({
@@ -281,16 +288,19 @@ export async function deploy(api) {
     VersionLabel: nextVersion.toString(),
     OptionSettings: toUpdate,
     OptionsToRemove: toRemove
-  }).promise();
+  });
 
-  await waitForEnvReady(config, true);
+  await waitForEnvReady(config, true, eventLog);
 
-  const {
-    Environments
-  } = await beanstalk.describeEnvironments({
-    ApplicationName: app,
-    EnvironmentNames: [environment]
-  }).promise();
+  stopLogStreamListener();
+
+  // XXX Is this necessary?
+  // const {
+  //   Environments
+  // } = await beanstalk.describeEnvironments({
+  //   ApplicationName: app,
+  //   EnvironmentNames: [environment]
+  // });
 
   await api.runCommand('beanstalk.clean');
 
@@ -302,51 +312,46 @@ export async function deploy(api) {
   } = await beanstalk.describeEnvironments({
     ApplicationName: app,
     EnvironmentNames: [environment]
-  }).promise();
+  });
 
-  if (nextVersion.toString() === finalEnvironments[0].VersionLabel) {
-    console.log(chalk.green(`App is running at ${Environments[0].CNAME}`));
+  if (nextVersion.toString() === finalEnvironments![0].VersionLabel) {
+    if (config.app.envType === "worker") {
+      console.log(chalk.green(`Worker is running.`));
+    } else {
+      console.log(chalk.green(`App is running at ${finalEnvironments![0].CNAME}`));
+    }
   } else {
     console.log(chalk.red`Deploy Failed. Visit the Aws Elastic Beanstalk console to view the logs from the failed deploy.`);
     process.exitCode = 1;
   }
 }
 
-export async function logs(api) {
+export async function logs (api: MupApi) {
   const logsContent = await getLogs(api, ['web.stdout.log', 'nodejs/nodejs.log']);
 
-  logsContent.forEach(({
-    instance,
-    data
-  }) => {
+  logsContent.forEach(({ instance, data }) => {
     console.log(`${instance} `, data[0] || data[1]);
   });
 }
 
-export async function logsNginx(api) {
+export async function logsNginx (api: MupApi) {
   const logsContent = await getLogs(api, ['nginx/error.log', 'nginx/access.log']);
 
-  logsContent.forEach(({
-    instance,
-    data
-  }) => {
+  logsContent.forEach(({ instance, data }) => {
     console.log(`${instance} `, data[0]);
     console.log(`${instance} `, data[1]);
   });
 }
 
-export async function logsEb(api) {
+export async function logsEb (api: MupApi) {
   const logsContent = await getLogs(api, ['eb-engine.log', 'eb-activity.log']);
 
-  logsContent.forEach(({
-    data,
-    instance
-  }) => {
+  logsContent.forEach(({ data, instance }) => {
     console.log(`${instance} `, data[0] || data[1]);
   });
 }
 
-export async function start(api) {
+export async function start (api: MupApi) {
   const config = api.getConfig();
   const {
     environment
@@ -358,9 +363,9 @@ export async function start(api) {
     EnvironmentResources
   } = await beanstalk.describeEnvironmentResources({
     EnvironmentName: environment
-  }).promise();
+  });
 
-  const autoScalingGroup = EnvironmentResources.AutoScalingGroups[0].Name;
+  const autoScalingGroup = EnvironmentResources!.AutoScalingGroups![0].Name;
 
   const {
     minInstances,
@@ -372,12 +377,12 @@ export async function start(api) {
     MaxSize: maxInstances,
     MinSize: minInstances,
     DesiredCapacity: minInstances
-  }).promise();
+  });
 
-  await waitForHealth(config);
+  await waitForHealth(config, undefined, false);
 }
 
-export async function stop(api) {
+export async function stop (api: MupApi) {
   const config = api.getConfig();
   const {
     environment
@@ -389,21 +394,21 @@ export async function stop(api) {
     EnvironmentResources
   } = await beanstalk.describeEnvironmentResources({
     EnvironmentName: environment
-  }).promise();
+  });
 
-  const autoScalingGroup = EnvironmentResources.AutoScalingGroups[0].Name;
+  const autoScalingGroup = EnvironmentResources!.AutoScalingGroups![0].Name;
 
   await autoScaling.updateAutoScalingGroup({
     AutoScalingGroupName: autoScalingGroup,
     MaxSize: 0,
     MinSize: 0,
     DesiredCapacity: 0
-  }).promise();
+  });
 
-  await waitForHealth(config, 'Grey');
+  await waitForHealth(config, 'Grey', false);
 }
 
-export async function restart(api) {
+export async function restart (api: MupApi) {
   const config = api.getConfig();
   const {
     environment
@@ -413,12 +418,12 @@ export async function restart(api) {
 
   await beanstalk.restartAppServer({
     EnvironmentName: environment
-  }).promise();
+  });
 
   await waitForEnvReady(config, false);
 }
 
-export async function clean(api) {
+export async function clean (api: MupApi) {
   const config = api.getConfig();
   const {
     app,
@@ -439,14 +444,14 @@ export async function clean(api) {
       ApplicationName: app,
       VersionLabel: versions[i].toString(),
       DeleteSourceBundle: true
-    }).promise());
+    }));
   }
 
   for (let i = 0; i < envVersions.length; i++) {
     promises.push(s3.deleteObject({
       Bucket: bucket,
       Key: `env/${envVersions[i]}.txt`
-    }).promise());
+    }));
   }
 
   // TODO: remove bundles
@@ -454,7 +459,7 @@ export async function clean(api) {
   await Promise.all(promises);
 }
 
-export async function reconfig(api) {
+export async function reconfig (api: MupApi) {
   const config = api.getConfig();
   const {
     app,
@@ -471,9 +476,12 @@ export async function reconfig(api) {
   } = await beanstalk.describeEnvironments({
     ApplicationName: app,
     EnvironmentNames: [environment]
-  }).promise();
+  });
 
-  if (!Environments.find(env => env.Status !== 'Terminated')) {
+  const environmentExists = Environments!.find(
+    env => env.Status !== 'Terminated')
+
+  if (!environmentExists) {
     const desiredEbConfig = createDesiredConfig(
       api.getConfig(),
       api.getSettings(),
@@ -489,14 +497,19 @@ export async function reconfig(api) {
     const platformArn = await selectPlatformArn();
 
     const [version] = await ebVersions(api);
+
+    // Whether this is a web or worker environment
+    const envTierConfig = getEnvTierConfig(config.app.envType);
+
     await beanstalk.createEnvironment({
       ApplicationName: app,
       EnvironmentName: environment,
       Description: `Environment for ${config.app.name}, managed by Meteor Up`,
       VersionLabel: version.toString(),
       PlatformArn: platformArn,
+      Tier: envTierConfig,
       OptionSettings: desiredEbConfig.OptionSettings
-    }).promise();
+    });
 
     console.log(' Created Environment');
     await waitForEnvReady(config, false);
@@ -522,7 +535,7 @@ export async function reconfig(api) {
         EnvironmentName: environment,
         OptionSettings: toUpdate,
         OptionsToRemove: toRemove
-      }).promise();
+      });
       console.log('  Updated Environment');
       await waitForEnvReady(config, true);
     }
@@ -533,19 +546,19 @@ export async function reconfig(api) {
   } = await beanstalk.describeConfigurationSettings({
     EnvironmentName: environment,
     ApplicationName: app
-  }).promise();
+  });
 
-  if (scalingConfigChanged(ConfigurationSettings[0].OptionSettings, config)) {
+  if (scalingConfigChanged(ConfigurationSettings![0].OptionSettings!, config)) {
     logStep('=> Configuring scaling');
     await beanstalk.updateEnvironment({
       EnvironmentName: environment,
       OptionSettings: scalingConfig(config.app).OptionSettings
-    }).promise();
+    });
     await waitForEnvReady(config, true);
   }
 }
 
-export async function events(api) {
+export async function events (api: MupApi) {
   const {
     environment
   } = names(api.getConfig());
@@ -554,12 +567,12 @@ export async function events(api) {
     Events: envEvents
   } = await beanstalk.describeEvents({
     EnvironmentName: environment
-  }).promise();
+  });
 
-  console.log(envEvents.map(ev => `${ev.EventDate}: ${ev.Message}`).join('\n'));
+  console.log(envEvents!.map(ev => `${ev.EventDate}: ${ev.Message}`).join('\n'));
 }
 
-export async function status(api) {
+export async function status (api: MupApi) {
   const {
     environment
   } = names(api.getConfig());
@@ -572,8 +585,9 @@ export async function status(api) {
         'All'
       ],
       EnvironmentName: environment
-    }).promise();
+    });
   } catch (e) {
+    // @ts-ignore
     if (e.message.includes('No Environment found for EnvironmentName')) {
       console.log(' AWS Beanstalk environment does not exist');
       return;
@@ -589,20 +603,20 @@ export async function status(api) {
       'All'
     ],
     EnvironmentName: environment
-  }).promise();
+  });
 
   const {
     RequestCount,
     Duration,
     StatusCodes,
     Latency
-  } = result.ApplicationMetrics;
+  } = result.ApplicationMetrics!;
 
   console.log(`Environment Status: ${result.Status}`);
-  console.log(`Health Status: ${coloredStatusText(result.Color, result.HealthStatus)}`);
-  if (result.Causes.length > 0) {
+  console.log(`Health Status: ${coloredStatusText(result.Color!, result.HealthStatus!)}`);
+  if (result.Causes!.length > 0) {
     console.log('Causes: ');
-    result.Causes.forEach(cause => console.log(`  ${cause}`));
+    result.Causes!.forEach(cause => console.log(`  ${cause}`));
   }
   console.log('');
   console.log(`=== Metrics For Last ${Duration || 'Unknown'} Minutes ===`);
@@ -627,48 +641,49 @@ export async function status(api) {
   }
   console.log('');
   console.log('=== Instances ===');
-  InstanceHealthList.forEach((instance) => {
-    console.log(`  ${instance.InstanceId}: ${coloredStatusText(instance.Color, instance.HealthStatus)}`);
+  InstanceHealthList!.forEach((instance) => {
+    console.log(`  ${instance.InstanceId}: ${coloredStatusText(instance.Color!, instance.HealthStatus!)}`);
   });
-  if (InstanceHealthList.length === 0) {
+  if (InstanceHealthList!.length === 0) {
     console.log('  0 Instances');
   }
 }
 
-export async function ssl(api) {
+export async function ssl (api: MupApi) {
   const config = api.getConfig();
+
+  // Worker envs don't need ssl
+  if (config.app.envType !== 'webapp') return;
 
   await waitForEnvReady(config, true);
 
   if (!config.app || !config.app.sslDomains) {
     logStep('=> Updating Beanstalk SSL Config');
-    await updateSSLConfig(config);
+    await ensureSSLConfigured(config);
     return;
   }
 
   logStep('=> Checking Certificate Status');
 
   const domains = config.app.sslDomains;
-  const {
-    CertificateSummaryList
-  } = await acm.listCertificates().promise();
+  const { CertificateSummaryList } = await acm.listCertificates({});
   let found = null;
 
-  for (let i = 0; i < CertificateSummaryList.length; i++) {
+  for (let i = 0; i < CertificateSummaryList!.length; i++) {
     const {
       DomainName,
       CertificateArn
-    } = CertificateSummaryList[i];
+    } = CertificateSummaryList![i];
 
     if (DomainName === domains[0]) {
       const {
         Certificate
       } = await acm.describeCertificate({ // eslint-disable-line no-await-in-loop
         CertificateArn
-      }).promise();
+      });
 
-      if (domains.join(',') === Certificate.SubjectAlternativeNames.join(',')) {
-        found = CertificateSummaryList[i];
+      if (domains.join(',') === Certificate!.SubjectAlternativeNames!.join(',')) {
+        found = CertificateSummaryList![i];
       }
     }
   }
@@ -680,8 +695,8 @@ export async function ssl(api) {
 
     const result = await acm.requestCertificate({
       DomainName: domains.shift(),
-      SubjectAlternativeNames: domains.length > 0 ? domains : null
-    }).promise();
+      SubjectAlternativeNames: domains.length > 0 ? domains : undefined
+    });
 
     certificateArn = result.CertificateArn;
   }
@@ -696,12 +711,11 @@ export async function ssl(api) {
 
   /* eslint-disable no-await-in-loop */
   while (!emailsProvided && checks < 5) {
-    const {
-      Certificate
-    } = await acm.describeCertificate({
+    const certRes = await acm.describeCertificate({
       CertificateArn: certificateArn
-    }).promise();
-    const validationOptions = Certificate.DomainValidationOptions[0];
+    });
+    const Certificate = certRes.Certificate!;
+    const validationOptions = Certificate.DomainValidationOptions![0];
 
     if (typeof validationOptions.ValidationEmails === 'undefined') {
       emailsProvided = true;
@@ -718,9 +732,9 @@ export async function ssl(api) {
     }
   }
 
-  if (certificate.Status === 'PENDING_VALIDATION') {
+  if (certificate && certificate.Status! === 'PENDING_VALIDATION') {
     console.log('Certificate is pending validation.');
-    certificate.DomainValidationOptions.forEach(({
+    certificate.DomainValidationOptions!.forEach(({
       DomainName,
       ValidationEmails,
       ValidationDomain,
@@ -743,14 +757,14 @@ export async function ssl(api) {
 
       console.log('Run "mup beanstalk ssl" after you have verified the domains, or to check the verification status');
     });
-  } else if (certificate.Status === 'ISSUED') {
+  } else if (certificate && certificate.Status === 'ISSUED') {
     console.log(chalk.green('Certificate has been issued'));
     logStep('=> Updating Beanstalk SSL config');
-    await updateSSLConfig(config, certificateArn);
+    await ensureSSLConfigured(config, certificateArn);
   }
 }
 
-export async function shell(api) {
+export async function shell (api: MupApi) {
   const {
     selected,
     description
@@ -768,7 +782,9 @@ export async function shell(api) {
     sshOptions,
     removeSSHAccess
   } = await connectToInstance(api, selected, 'mup beanstalk shell');
+
   const conn = new Client();
+
   conn.on('ready', () => {
     conn.exec('sudo node /home/webapp/meteor-shell.js', {
       pty: true
@@ -787,16 +803,18 @@ export async function shell(api) {
 
       stream.pipe(process.stdout);
       stream.stderr.pipe(process.stderr);
+      // @ts-ignore
       stream.setWindow(process.stdout.rows, process.stdout.columns);
 
       process.stdout.on('resize', () => {
+        // @ts-ignore
         stream.setWindow(process.stdout.rows, process.stdout.columns);
       });
     });
   }).connect(sshOptions);
 }
 
-export async function debug(api) {
+export async function debug (api: MupApi) {
   const config = api.getConfig();
   const {
     selected,
@@ -829,7 +847,7 @@ export async function debug(api) {
 
     const server = {
       ...sshOptions,
-      pem: api.resolvePath(config.app.sshKey.privateKey)
+      pem: api.resolvePath(config.app.sshKey!.privateKey!)
     };
 
     let loggedConnection = false;
