@@ -107,7 +107,7 @@ module.exports = {
         longEnvVars: true,
 
         // (optional) Enable log streamin to CloudWatch, and to the terminal output while deploying when `verbose` is also active.
-        logStreaming: false,
+        streamLogs: false,
 
         // (optional, default is 3) Number of old application versions to keep
         oldVersions: 3,
